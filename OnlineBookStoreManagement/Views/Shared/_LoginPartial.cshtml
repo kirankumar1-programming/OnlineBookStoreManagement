@@ -1,0 +1,82 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using OnlineBookStoreManagement.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject OnlineBookStoreManagement.Data.ApplicationDbContext DbContext
+
+@{
+    int cartCount = 0;
+    ApplicationUser? user = null;
+    bool isAdmin = false;
+
+    if (SignInManager.IsSignedIn(User))
+    {
+        user = await UserManager.GetUserAsync(User);
+        if (user != null)
+        {
+            var userId = user.Id;
+            cartCount = DbContext.ShoppingCartItems.Where(i => i.UserId == userId).Sum(i => i.Count);
+            isAdmin = await UserManager.IsInRoleAsync(user, OnlineBookStoreManagement.Data.DbInitializer.Role_Admin);
+        }
+    }
+}
+
+<ul class="navbar-nav align-items-center gap-2">
+    @if (SignInManager.IsSignedIn(User) && user != null)
+    {
+        <li class="nav-item">
+            <a class="nav-link nav-link-custom position-relative d-flex align-items-center gap-1" asp-controller="Cart" asp-action="Index">
+                <i class="bi bi-cart3 fs-5"></i>
+                <span class="d-none d-md-inline">Cart</span>
+                @if (cartCount > 0)
+                {
+                    <span class="badge badge-custom">@cartCount</span>
+                }
+            </a>
+        </li>
+
+        <li class="nav-item dropdown">
+            <a class="nav-link nav-link-custom dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: 700; font-size: 0.85rem;">
+                    @(!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0, 1).ToUpper() : "U")
+                </div>
+                <span>@(!string.IsNullOrEmpty(user.FullName) ? user.FullName : user.UserName)</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-secondary shadow-lg" aria-labelledby="userDropdown">
+                @if (isAdmin)
+                {
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold text-accent" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                            <i class="bi bi-speedometer2 me-2"></i> Admin Panel
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider border-secondary"></li>
+                }
+                <li>
+                    <a class="dropdown-item py-2" asp-controller="Account" asp-action="Orders">
+                        <i class="bi bi-bag-check me-2"></i> My Orders
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider border-secondary"></li>
+                <li>
+                    <form class="form-inline" asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="dropdown-item text-danger py-2 w-100 text-start">
+                            <i class="bi bi-box-arrow-right me-2"></i> Sign Out
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link nav-link-custom" asp-controller="Account" asp-action="Login">Sign In</a>
+        </li>
+        <li class="nav-item">
+            <a class="btn btn-primary-gradient px-3 py-2 text-decoration-none" asp-controller="Account" asp-action="Register">
+                Get Started
+            </a>
+        </li>
+    }
+</ul>

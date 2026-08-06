@@ -1,0 +1,42 @@
+﻿@using OnlineBookStoreManagement.Models.ViewModels
+@model IEnumerable<UserRoleViewModel>
+@{
+    ViewData["Title"] = "Manage User Roles";
+}
+
+<h2>👥 User & Role Management</h2>
+<p class="text-muted">Grant or revoke Administrator access for registered users.</p>
+
+<table class="table table-striped table-hover mt-3 align-middle">
+    <thead class="table-dark">
+        <tr>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Assigned Roles</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in Model)
+        {
+            <tr>
+                <td>@user.FullName</td>
+                <td>@user.Email</td>
+                <td>
+                    @foreach (var role in user.Roles)
+                    {
+                        <span class="badge @(role == "Admin" ? "bg-danger" : "bg-info") me-1">@role</span>
+                    }
+                </td>
+                <td>
+                    <form asp-action="ToggleAdminRole" method="post">
+                        <input type="hidden" name="userId" value="@user.UserId" />
+                        <button type="submit" class="btn btn-sm @(user.Roles.Contains("Admin") ? "btn-outline-danger" : "btn-outline-success")">
+                            @(user.Roles.Contains("Admin") ? "Demote to User" : "Promote to Admin")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,72 @@
+﻿
+@using OnlineBookStoreManagement.Models.ViewModels
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Sign In";
+}
+
+<div class="row justify-content-center py-4">
+    <div class="col-md-6 col-lg-5">
+        <div class="card bg-card border-secondary shadow-lg p-4 p-md-5">
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center bg-primary-glow text-primary rounded-circle p-3 mb-2">
+                    <i class="bi bi-box-arrow-in-right fs-2"></i>
+                </div>
+                <h3 class="fw-bold text-white mb-1">Welcome Back</h3>
+                <p class="text-muted">Sign in to your MyBookStore account</p>
+            </div>
+
+            <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label text-muted fw-semibold"></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-envelope"></i></span>
+                        <input asp-for="Email" class="form-control form-control-custom" placeholder="name@example.com" />
+                    </div>
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label text-muted fw-semibold"></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-lock"></i></span>
+                        <input asp-for="Password" class="form-control form-control-custom" placeholder="••••••••" />
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input asp-for="RememberMe" class="form-check-input" />
+                    <label asp-for="RememberMe" class="form-check-label text-muted"></label>
+                </div>
+
+                <button type="submit" class="btn btn-primary-gradient w-100 py-3 fw-bold mb-3">
+                    Sign In to Account
+                </button>
+            </form>
+
+            <div class="text-center text-muted">
+                <small>Don't have an account? <a asp-action="Register" asp-route-returnUrl="@ViewData["ReturnUrl"]" class="text-accent fw-bold text-decoration-none">Sign Up</a></small>
+            </div>
+
+            <!-- Demo Credentials Helper Card -->
+            <div class="mt-4 p-3 bg-dark rounded-3 border border-secondary">
+                <div class="fw-bold text-white small mb-2"><i class="bi bi-key me-1 text-warning"></i> Seeded Demo Login Accounts:</div>
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Admin: <strong class="text-light">admin@bookstore.com</strong></span>
+                    <span>Pass: <strong class="text-light">Admin@123</strong></span>
+                </div>
+                <div class="d-flex justify-content-between small text-muted">
+                    <span>Customer: <strong class="text-light">customer@bookstore.com</strong></span>
+                    <span>Pass: <strong class="text-light">Customer@123</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
