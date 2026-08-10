@@ -1,0 +1,226 @@
+﻿@model OnlineBookStoreManagement.Models.ViewModels.BookDetailsViewModel
+@{
+    ViewData["Title"] = Model.Book.Title;
+}
+
+<div class="mb-3">
+    <a asp-action="Index" class="text-muted text-decoration-none hover-white">
+        <i class="bi bi-arrow-left me-1"></i> Back to Catalog
+    </a>
+</div>
+
+<div class="card bg-card border-secondary shadow-lg p-4 mb-5">
+    <div class="row g-4">
+        <!-- Cover Image -->
+        <div class="col-md-5 col-lg-4 text-center">
+            <div class="rounded-3 overflow-hidden border border-secondary shadow-lg">
+                <img src="@(string.IsNullOrEmpty(Model.Book.CoverImageUrl) ? "https://via.placeholder.com/400x550?text=No+Cover" : Model.Book.CoverImageUrl)" 
+                     alt="@Model.Book.Title" class="img-fluid w-100" style="max-height: 480px; object-fit: cover;" />
+            </div>
+        </div>
+
+        <!-- Book Information -->
+        <div class="col-md-7 col-lg-8 d-flex flex-column">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-primary text-uppercase px-3 py-2">@Model.Book.Category?.Name</span>
+                    <span class="badge bg-dark border border-secondary text-muted font-monospace">ISBN: @Model.Book.ISBN</span>
+                </div>
+                <h1 class="display-6 fw-bold text-white mb-1">@Model.Book.Title</h1>
+                <p class="fs-5 text-muted mb-3">by <strong class="text-light">@Model.Book.Author</strong></p>
+
+                <!-- Average Star Rating Banner -->
+                <div class="d-flex align-items-center gap-2 mb-4 p-3 bg-dark rounded-3 border border-secondary">
+                    <div class="d-flex text-warning fs-5">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            if (i <= Math.Round(Model.Book.AverageRating))
+                            {
+                                <i class="bi bi-star-fill"></i>
+                            }
+                            else
+                            {
+                                <i class="bi bi-star text-muted"></i>
+                            }
+                        }
+                    </div>
+                    <span class="fw-bold text-white fs-5 ms-1">@Model.Book.AverageRating</span>
+                    <span class="text-muted">out of 5 (@Model.Book.ReviewCount @(Model.Book.ReviewCount == 1 ? "review" : "reviews"))</span>
+                </div>
+
+                <div class="d-flex align-items-baseline gap-3 mb-4">
+                    <div class="display-5 fw-extrabold text-accent">₹@Model.Book.Price.ToString("N2")</div>
+                    @if (Model.Book.StockQuantity > 0)
+                    {
+                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2">
+                            <i class="bi bi-check-circle-fill me-1"></i> In Stock (@Model.Book.StockQuantity copies available)
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2">
+                            <i class="bi bi-x-circle-fill me-1"></i> Out of Stock
+                        </span>
+                    }
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="fw-bold text-white mb-2">Overview</h5>
+                    <p class="text-light opacity-90 leading-relaxed fs-6">@Model.Book.Description</p>
+                </div>
+            </div>
+
+            <!-- Add to Cart Form -->
+            <div class="mt-auto pt-3 border-top border-secondary">
+                @if (Model.Book.StockQuantity > 0)
+                {
+                    <form asp-controller="Cart" asp-action="AddToCart" method="post" class="row g-3 align-items-center">
+                        <input type="hidden" name="bookId" value="@Model.Book.Id" />
+                        <div class="col-auto">
+                            <label class="form-label text-muted fw-bold mb-0 me-2">Quantity:</label>
+                        </div>
+                        <div class="col-auto">
+                            <input type="number" name="quantity" value="1" min="1" max="@Model.Book.StockQuantity" class="form-control form-control-custom text-center fw-bold" style="width: 90px;" />
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-primary-gradient px-4 py-2">
+                                <i class="bi bi-cart-plus-fill me-2"></i> Add to Shopping Cart
+                            </button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <button class="btn btn-secondary disabled opacity-50 px-4 py-2">
+                        <i class="bi bi-slash-circle me-2"></i> Currently Unavailable
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Reviews & Ratings Section -->
+<div class="row g-4 mb-5">
+    <div class="col-lg-7">
+        <div class="card bg-card border-secondary shadow-lg p-4 h-100">
+            <h4 class="fw-bold text-white mb-4"><i class="bi bi-chat-left-quote me-2 text-primary"></i> Customer Reviews (@Model.Book.ReviewCount)</h4>
+
+            @if (!Model.Book.Reviews.Any())
+            {
+                <div class="p-4 text-center text-muted">
+                    <i class="bi bi-chat-square-text display-4 mb-2 d-block"></i>
+                    No customer reviews yet. Be the first to rate and review this book!
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var review in Model.Book.Reviews.OrderByDescending(r => r.ReviewDate))
+                    {
+                        <div class="p-3 bg-dark rounded-3 border border-secondary">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: 700;">
+                                        @(review.User?.FullName?.Substring(0, 1).ToUpper() ?? "C")
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold text-white mb-0">@(review.User?.FullName ?? "Verified Reader")</h6>
+                                        <small class="text-muted">@review.ReviewDate.ToString("MMM dd, yyyy")</small>
+                                    </div>
+                                </div>
+
+                                <div class="text-warning">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        if (i <= review.Rating)
+                                        {
+                                            <i class="bi bi-star-fill"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-star text-muted"></i>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                            <p class="text-light mb-0">@review.Comment</p>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Submit Review Form Card -->
+    <div class="col-lg-5">
+        <div class="card bg-card border-secondary shadow-lg p-4 h-100">
+            <h4 class="fw-bold text-white mb-3"><i class="bi bi-star-half me-2 text-warning"></i> Leave a Review</h4>
+
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form asp-action="AddReview" method="post">
+                    <input type="hidden" name="bookId" value="@Model.Book.Id" />
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold">Your Rating</label>
+                        <select name="rating" class="form-select form-select-custom fw-bold text-warning" required>
+                            <option value="5">⭐⭐⭐⭐⭐ (5 Stars - Excellent)</option>
+                            <option value="4">⭐⭐⭐⭐ (4 Stars - Very Good)</option>
+                            <option value="3">⭐⭐⭐ (3 Stars - Good)</option>
+                            <option value="2">⭐⭐ (2 Stars - Average)</option>
+                            <option value="1">⭐ (1 Star - Poor)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold">Your Comment</label>
+                        <textarea name="comment" rows="4" class="form-control form-control-custom" placeholder="What did you think of the author's writing style, insights, or story?" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-gradient w-100 py-2 fw-bold">
+                        <i class="bi bi-send me-1"></i> Submit Review
+                    </button>
+                </form>
+            }
+            else
+            {
+                <div class="p-4 text-center text-muted bg-dark rounded border border-secondary my-auto">
+                    <i class="bi bi-lock fs-2 d-block mb-2 text-warning"></i>
+                    <p class="mb-3">Please sign in to leave a review and rating for this book.</p>
+                    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/Home/Details/@Model.Book.Id" class="btn btn-secondary-outline btn-sm">
+                        Sign In to Review
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Related Books -->
+@if (Model.RelatedBooks.Any())
+{
+    <div class="mt-4">
+        <h4 class="fw-bold text-white mb-4"><i class="bi bi-journals me-2 text-primary"></i> You May Also Like</h4>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            @foreach (var rBook in Model.RelatedBooks)
+            {
+                <div class="col">
+                    <div class="book-card">
+                        <div class="book-cover-container" style="height: 180px;">
+                            <img src="@(string.IsNullOrEmpty(rBook.CoverImageUrl) ? "https://via.placeholder.com/300x400" : rBook.CoverImageUrl)" alt="@rBook.Title" class="book-cover-img" />
+                        </div>
+                        <div class="book-card-body p-3">
+                            <h6 class="book-title fs-6">@rBook.Title</h6>
+                            <p class="book-author small mb-2">@rBook.Author</p>
+                            <div class="d-flex align-items-center justify-content-between mt-auto">
+                                <span class="fw-bold text-accent">₹@rBook.Price.ToString("N2")</span>
+                                <a asp-action="Details" asp-route-id="@rBook.Id" class="btn btn-secondary-outline btn-sm py-1 px-2">View</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}

@@ -1,0 +1,126 @@
+@model OnlineBookStoreManagement.Models.OrderHeader
+@{
+    ViewData["Title"] = "Order Confirmation";
+}
+
+<div class="container py-4">
+    <!-- Success Celebration Banner -->
+    <div class="card bg-card border-success shadow-lg text-center p-5 mb-4 position-relative overflow-hidden">
+        <div class="position-absolute top-0 start-50 translate-middle-x w-100 h-100 pointer-events-none" 
+             style="background: radial-gradient(circle at top, rgba(16, 185, 129, 0.15), transparent 70%);"></div>
+        
+        <div class="mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-25 text-success rounded-circle p-4 mb-2 shadow" style="width: 90px; height: 90px;">
+                <i class="bi bi-check-lg display-3"></i>
+            </div>
+        </div>
+
+        <h1 class="fw-extrabold text-white mb-2">Order Confirmed!</h1>
+        <p class="text-muted fs-5 mb-3">Thank you for your purchase. Your order has been placed successfully.</p>
+        
+        <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap">
+            <span class="badge bg-dark border border-secondary text-light px-3 py-2 fs-6">
+                <i class="bi bi-hash text-accent me-1"></i> Order ID: <strong class="text-white">#@Model.Id</strong>
+            </span>
+            <span class="badge bg-dark border border-secondary text-light px-3 py-2 fs-6">
+                <i class="bi bi-calendar-check text-accent me-1"></i> Date: <strong class="text-white">@Model.OrderDate.ToLocalTime().ToString("MMM dd, yyyy - hh:mm tt")</strong>
+            </span>
+            <span class="badge bg-success text-white px-3 py-2 fs-6">
+                <i class="bi bi-shield-check me-1"></i> Payment Status: <strong>@Model.PaymentStatus</strong>
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Order Items Breakdown -->
+        <div class="col-lg-7">
+            <div class="card bg-card border-secondary shadow-lg p-4 mb-4">
+                <h5 class="fw-bold text-white mb-4 d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-journal-bookmark me-2 text-primary"></i> Ordered Books</span>
+                    <span class="badge bg-primary rounded-pill">@Model.OrderDetails.Sum(d => d.Count) Item(s)</span>
+                </h5>
+
+                <div class="list-group list-group-flush mb-3">
+                    @foreach (var detail in Model.OrderDetails)
+                    {
+                        <div class="list-group-item bg-transparent border-secondary px-0 py-3 d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-dark rounded border border-secondary d-flex align-items-center justify-content-center text-primary" style="width: 50px; height: 65px; font-size: 1.5rem;">
+                                    <i class="bi bi-book"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold text-white mb-1">@detail.Book?.Title</h6>
+                                    <p class="text-muted small mb-0">Author: @detail.Book?.Author | Qty: <span class="text-white fw-bold">@detail.Count</span></p>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-bold text-accent font-monospace fs-6">₹@((detail.Price * detail.Count).ToString("N2"))</span>
+                                <br />
+                                <small class="text-muted font-monospace">₹@detail.Price.ToString("N2") each</small>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <hr class="border-secondary my-3" />
+
+                <!-- Payment Reference info -->
+                <div class="p-3 bg-dark bg-opacity-50 rounded border border-secondary d-flex align-items-center justify-content-between">
+                    <div>
+                        <small class="text-muted d-block">Transaction Reference</small>
+                        <span class="text-white font-monospace fw-bold small">TXN_@(Model.Id * 9876543)</span>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted d-block">Order Status</small>
+                        <span class="badge bg-info text-dark fw-bold">@Model.OrderStatus</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shipping & Billing Summary -->
+        <div class="col-lg-5">
+            <!-- Shipping Details -->
+            <div class="card bg-card border-secondary shadow-lg p-4 mb-4">
+                <h5 class="fw-bold text-white mb-3">
+                    <i class="bi bi-geo-alt me-2 text-accent"></i> Shipping Address
+                </h5>
+                <div class="bg-dark bg-opacity-50 p-3 rounded border border-secondary">
+                    <h6 class="fw-bold text-white mb-2"><i class="bi bi-person me-2 text-primary"></i> @Model.Name</h6>
+                    <p class="text-muted small mb-1"><i class="bi bi-building me-2"></i> @Model.StreetAddress</p>
+                    <p class="text-muted small mb-1"><i class="bi bi-pin-map me-2"></i> @Model.City, @Model.PostalCode</p>
+                    <p class="text-muted small mb-0"><i class="bi bi-telephone me-2"></i> @Model.PhoneNumber</p>
+                </div>
+            </div>
+
+            <!-- Total Amount Card -->
+            <div class="card bg-card border-secondary shadow-lg p-4 mb-4">
+                <h5 class="fw-bold text-white mb-3">
+                    <i class="bi bi-receipt me-2 text-success"></i> Payment Summary
+                </h5>
+                
+                <div class="d-flex justify-content-between mb-2 text-muted">
+                    <span>Grand Total Paid</span>
+                    <span class="text-accent font-monospace fw-bold fs-5">₹@Model.OrderTotal.ToString("N2")</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 text-muted small">
+                    <span>Payment Gateway</span>
+                    <span class="text-success fw-bold"><i class="bi bi-shield-check me-1"></i> Verified &amp; Encrypted</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2">
+                <button type="button" onclick="window.print()" class="btn btn-secondary-outline py-2 fw-semibold">
+                    <i class="bi bi-printer me-2"></i> Print / Download Invoice
+                </button>
+                <a asp-controller="Account" asp-action="Orders" class="btn btn-primary-gradient py-2.5 fw-bold">
+                    <i class="bi bi-box-seam me-2"></i> View My Orders
+                </a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-dark border border-secondary text-light py-2 fw-semibold mt-1">
+                    <i class="bi bi-arrow-left me-2"></i> Continue Shopping
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

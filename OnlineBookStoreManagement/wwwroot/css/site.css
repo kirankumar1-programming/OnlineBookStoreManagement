@@ -411,3 +411,55 @@ footer {
     color: #cbd5e1 !important;
     font-size: 0.9rem;
 }
+
+/* Payment Gateway Modal Custom Styling */
+.style-pg-modal {
+    border-radius: 18px !important;
+    background-color: #0f172a !important;
+}
+
+.payment-option-card {
+    transition: all 0.2s ease;
+}
+
+.payment-option-card:hover {
+    border-color: var(--primary) !important;
+    background-color: #1e293b !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.letter-spacing-2 {
+    letter-spacing: 2px;
+}
+
+.bg-gradient-card {
+    background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%) !important;
+}
+
+@media (min-width: 768px) {
+    .border-end-md {
+        border-right: 1px solid var(--border-color) !important;
+    }
+}
+
+@media print {
+    body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    .navbar, footer, .btn, .no-print {
+        display: none !important;
+    }
+    .card {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+    }
+    h1, h2, h3, h4, h5, h6, p, span, div {
+        color: #000000 !important;
+    }
+}

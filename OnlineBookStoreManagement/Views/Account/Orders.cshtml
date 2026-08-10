@@ -1,0 +1,83 @@
+﻿@page
+@model IEnumerable<OrderHeader>
+@{
+    ViewData["Title"] = "My Orders";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-bold text-white mb-0"><i class="bi bi-bag-check me-2 text-primary"></i> Order History</h2>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary-outline btn-sm">
+        <i class="bi bi-shop me-1"></i> Browse Bookstore
+    </a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="card p-5 text-center bg-card border-secondary shadow-lg my-4">
+        <i class="bi bi-journal-x display-1 text-muted mb-3"></i>
+        <h4 class="text-white">No Orders Found</h4>
+        <p class="text-muted">You haven't placed any book orders yet.</p>
+        <div class="mt-3">
+            <a asp-controller="Home" asp-action="Index" class="btn btn-primary-gradient px-4 py-2">Start Shopping</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card bg-card border-secondary shadow-lg overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-custom align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Order Date</th>
+                        <th>Recipient</th>
+                        <th>Status</th>
+                        <th>Payment</th>
+                        <th class="text-end">Total Amount</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model)
+                    {
+                        <tr>
+                            <td class="fw-bold text-accent font-monospace">#@order.Id</td>
+                            <td class="text-muted">@order.OrderDate.ToString("MMM dd, yyyy")</td>
+                            <td class="text-white">@order.Name</td>
+                            <td>
+                                @switch (order.OrderStatus)
+                                {
+                                    case "Pending":
+                                        <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-clock me-1"></i> Pending</span>
+                                        break;
+                                    case "Processing":
+                                        <span class="badge bg-info text-dark px-3 py-2"><i class="bi bi-gear me-1"></i> Processing</span>
+                                        break;
+                                    case "Shipped":
+                                        <span class="badge bg-primary px-3 py-2"><i class="bi bi-truck me-1"></i> Shipped</span>
+                                        break;
+                                    case "Delivered":
+                                        <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle me-1"></i> Delivered</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-danger px-3 py-2"><i class="bi bi-x-circle me-1"></i> @order.OrderStatus</span>
+                                        break;
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-dark border border-secondary text-light px-2 py-1">@order.PaymentStatus</span>
+                            </td>
+                            <td class="text-end fw-extrabold text-accent font-monospace">₹@order.OrderTotal.ToString("N2")</td>
+                            <td class="text-center">
+                                <a asp-action="OrderDetails" asp-route-id="@order.Id" class="btn btn-secondary-outline btn-sm">
+                                    View Receipt
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
