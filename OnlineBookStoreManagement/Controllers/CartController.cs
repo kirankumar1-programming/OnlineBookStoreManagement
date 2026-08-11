@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -193,7 +193,7 @@ namespace OnlineBookStoreManagement.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Checkout(ShoppingCartViewModel vm)
+        public async Task<IActionResult> Checkout(ShoppingCartViewModel vm, string? paymentType = null)
         {
             var userId = GetUserId();
             var cartItems = await _db.ShoppingCartItems
@@ -209,6 +209,11 @@ namespace OnlineBookStoreManagement.Controllers
 
             vm.CartItems = cartItems;
 
+            // Assign UserId and clear non-form ModelState validations
+            vm.OrderHeader.UserId = userId!;
+            ModelState.Remove("OrderHeader.UserId");
+            ModelState.Remove("OrderHeader.User");
+
             if (!ModelState.IsValid)
             {
                 return View(vm);
@@ -216,10 +221,17 @@ namespace OnlineBookStoreManagement.Controllers
 
             // Create Order Header
             var orderHeader = vm.OrderHeader;
-            orderHeader.UserId = userId!;
             orderHeader.OrderDate = DateTime.UtcNow;
             orderHeader.OrderStatus = "Pending";
-            orderHeader.PaymentStatus = "Approved"; // Simulated Payment Gateway success
+            
+            string methodKey = (paymentType ?? "upi").ToLower();
+            string paymentMethodTitle = methodKey switch
+            {
+                "card" => "Approved (Credit/Debit Card)",
+                "cod" => "Pending (Cash on Delivery)",
+                _ => "Approved (UPI / Net Banking)"
+            };
+            orderHeader.PaymentStatus = paymentMethodTitle;
             orderHeader.OrderTotal = vm.GrandTotal;
 
             await _db.OrderHeaders.AddAsync(orderHeader);
@@ -238,14 +250,19 @@ namespace OnlineBookStoreManagement.Controllers
                 await _db.OrderDetails.AddAsync(detail);
 
                 // Deduct stock
-                item.Book.StockQuantity -= item.Count;
-                if (item.Book.StockQuantity < 0) item.Book.StockQuantity = 0;
+                if (item.Book != null)
+                {
+                    item.Book.StockQuantity -= item.Count;
+                    if (item.Book.StockQuantity < 0) item.Book.StockQuantity = 0;
+                }
             }
 
-            // Clear Cart
+            // Clear Cart items from Database
             _db.ShoppingCartItems.RemoveRange(cartItems);
 
             await _db.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Order placed successfully!";
 
             return RedirectToAction(nameof(OrderConfirmation), new { id = orderHeader.Id });
         }

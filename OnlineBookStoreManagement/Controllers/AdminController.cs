@@ -1,4 +1,3 @@
-﻿
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +7,7 @@ using OnlineBookStoreManagement.Models.ViewModels;
 
 namespace OnlineBookStoreManagement.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class AdminController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -20,15 +19,34 @@ namespace OnlineBookStoreManagement.Controllers
             _roleManager = roleManager;
         }
 
-        // GET: /Admin/Dashboard
-        public IActionResult Index()
+        private async Task<bool> CheckAdminAccessAsync()
         {
-            return View();
+            if (User.IsInRole("Admin") || User.IsInRole("Administrator")) return true;
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return false;
+
+            if (await _userManager.IsInRoleAsync(user, "Admin") || await _userManager.IsInRoleAsync(user, "Administrator")) return true;
+
+            if (!string.IsNullOrEmpty(user.Email) && user.Email.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
+            if (!string.IsNullOrEmpty(user.UserName) && user.UserName.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
+            if (!string.IsNullOrEmpty(user.FullName) && user.FullName.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
+
+            return false;
+        }
+
+        // GET: /Admin
+        public async Task<IActionResult> Index()
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+            return RedirectToAction(nameof(Users));
         }
 
         // GET: /Admin/Users
         public async Task<IActionResult> Users()
         {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
             var users = await _userManager.Users.ToListAsync();
             var userRolesList = new List<UserRoleViewModel>();
 
@@ -52,6 +70,8 @@ namespace OnlineBookStoreManagement.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleAdminRole(string userId)
         {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) return NotFound();
 

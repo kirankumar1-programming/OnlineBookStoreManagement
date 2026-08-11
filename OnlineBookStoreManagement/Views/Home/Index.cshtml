@@ -1,4 +1,4 @@
-﻿@using OnlineBookStoreManagement.Models.ViewModels
+@using OnlineBookStoreManagement.Models.ViewModels
 @model StoreIndexViewModel
 @{
     ViewData["Title"] = "Discover Books";
@@ -140,8 +140,9 @@
                     <div class="col">
                         <div class="book-card">
                             <div class="book-cover-container">
-                                <img src="@(string.IsNullOrEmpty(book.CoverImageUrl) ? "https://via.placeholder.com/300x400?text=No+Cover" : book.CoverImageUrl)"
-                                     alt="@book.Title" class="book-cover-img" />
+                                <img src="@(string.IsNullOrEmpty(book.CoverImageUrl) ? "/images/default-book.svg" : book.CoverImageUrl)"
+                                     alt="@book.Title" class="book-cover-img" width="300" height="400"
+                                     onerror="this.onerror=null; this.src='/images/default-book.svg';" />
                                 <span class="category-tag">@book.Category?.Name</span>
                             </div>
                             <div class="book-card-body">

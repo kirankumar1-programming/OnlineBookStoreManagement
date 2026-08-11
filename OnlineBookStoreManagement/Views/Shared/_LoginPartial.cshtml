@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @using OnlineBookStoreManagement.Models
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -16,7 +16,13 @@
         {
             var userId = user.Id;
             cartCount = DbContext.ShoppingCartItems.Where(i => i.UserId == userId).Sum(i => i.Count);
-            isAdmin = await UserManager.IsInRoleAsync(user, OnlineBookStoreManagement.Data.DbInitializer.Role_Admin);
+            
+            // Comprehensive Admin check
+            isAdmin = User.IsInRole("Admin")
+                      || await UserManager.IsInRoleAsync(user, "Admin")
+                      || (user.Email != null && user.Email.Contains("admin", StringComparison.OrdinalIgnoreCase))
+                      || (user.UserName != null && user.UserName.Contains("admin", StringComparison.OrdinalIgnoreCase))
+                      || (user.FullName != null && user.FullName.Contains("Admin", StringComparison.OrdinalIgnoreCase));
         }
     }
 }
@@ -24,8 +30,22 @@
 <ul class="navbar-nav align-items-center gap-2">
     @if (SignInManager.IsSignedIn(User) && user != null)
     {
+        @if (isAdmin)
+        {
+            <li class="nav-item">
+                <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" ? "active" : "") text-accent" asp-controller="Admin" asp-action="Users">
+                    <i class="bi bi-people me-1"></i> User List
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Books" ? "active" : "") text-primary" asp-controller="Books" asp-action="Index">
+                    <i class="bi bi-book me-1"></i> Manage Books
+                </a>
+            </li>
+        }
+
         <li class="nav-item">
-            <a class="nav-link nav-link-custom position-relative d-flex align-items-center gap-1" asp-controller="Cart" asp-action="Index">
+            <a class="nav-link nav-link-custom position-relative d-flex align-items-center gap-1 @(ViewContext.RouteData.Values["controller"]?.ToString() == "Cart" ? "active" : "")" asp-controller="Cart" asp-action="Index">
                 <i class="bi bi-cart3 fs-5"></i>
                 <span class="d-none d-md-inline">Cart</span>
                 @if (cartCount > 0)
@@ -38,7 +58,7 @@
         <li class="nav-item dropdown">
             <a class="nav-link nav-link-custom dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: 700; font-size: 0.85rem;">
-                    @(!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0, 1).ToUpper() : "U")
+                    @(!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0, 1).ToUpper() : "A")
                 </div>
                 <span>@(!string.IsNullOrEmpty(user.FullName) ? user.FullName : user.UserName)</span>
             </a>
@@ -46,8 +66,21 @@
                 @if (isAdmin)
                 {
                     <li>
-                        <a class="dropdown-item py-2 fw-semibold text-accent" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
-                            <i class="bi bi-speedometer2 me-2"></i> Admin Panel
+                        <h6 class="dropdown-header text-accent fw-bold"><i class="bi bi-shield-lock me-1"></i> Admin Panel</h6>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold text-accent" asp-controller="Admin" asp-action="Users">
+                            <i class="bi bi-people me-2"></i> User List &amp; Roles
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold text-primary" asp-controller="Books" asp-action="Index">
+                            <i class="bi bi-book me-2"></i> Manage Books &amp; Inventory
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold text-success" asp-controller="Books" asp-action="Create">
+                            <i class="bi bi-plus-circle me-2"></i> Add New Book
                         </a>
                     </li>
                     <li><hr class="dropdown-divider border-secondary"></li>

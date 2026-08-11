@@ -1,42 +1,70 @@
-﻿@using OnlineBookStoreManagement.Models.ViewModels
+@using OnlineBookStoreManagement.Models.ViewModels
 @model IEnumerable<UserRoleViewModel>
 @{
-    ViewData["Title"] = "Manage User Roles";
+    ViewData["Title"] = "User List & Roles";
 }
 
-<h2>👥 User & Role Management</h2>
-<p class="text-muted">Grant or revoke Administrator access for registered users.</p>
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="bi bi-people me-2 text-accent"></i> User List &amp; Role Management</h2>
+        <p class="text-muted mb-0">View registered users, review permissions, and assign Administrator roles.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="Books" asp-action="Index" class="btn btn-primary-gradient btn-sm fw-bold">
+            <i class="bi bi-book me-1"></i> Manage Books &amp; Inventory
+        </a>
+    </div>
+</div>
 
-<table class="table table-striped table-hover mt-3 align-middle">
-    <thead class="table-dark">
-        <tr>
-            <th>Full Name</th>
-            <th>Email</th>
-            <th>Assigned Roles</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var user in Model)
-        {
-            <tr>
-                <td>@user.FullName</td>
-                <td>@user.Email</td>
-                <td>
-                    @foreach (var role in user.Roles)
-                    {
-                        <span class="badge @(role == "Admin" ? "bg-danger" : "bg-info") me-1">@role</span>
-                    }
-                </td>
-                <td>
-                    <form asp-action="ToggleAdminRole" method="post">
-                        <input type="hidden" name="userId" value="@user.UserId" />
-                        <button type="submit" class="btn btn-sm @(user.Roles.Contains("Admin") ? "btn-outline-danger" : "btn-outline-success")">
-                            @(user.Roles.Contains("Admin") ? "Demote to User" : "Promote to Admin")
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="card bg-card border-secondary shadow-lg overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-custom align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Email Address</th>
+                    <th>Assigned Roles</th>
+                    <th class="text-center">Role Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
+                                    @(!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0, 1).ToUpper() : "U")
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold text-white mb-0">@(!string.IsNullOrEmpty(user.FullName) ? user.FullName : "Registered User")</h6>
+                                    <small class="text-muted font-monospace">ID: @user.UserId.Substring(0, Math.Min(8, user.UserId.Length))...</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-light"><i class="bi bi-envelope me-1 text-muted"></i> @user.Email</span>
+                        </td>
+                        <td>
+                            @foreach (var role in user.Roles)
+                            {
+                                <span class="badge @(role == "Admin" ? "bg-danger" : "bg-info") me-1 px-3 py-1.5 rounded-pill fw-bold">
+                                    <i class="bi @(role == "Admin" ? "bi-shield-lock" : "bi-person") me-1"></i> @role
+                                </span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <form asp-action="ToggleAdminRole" method="post" class="d-inline">
+                                <input type="hidden" name="userId" value="@user.UserId" />
+                                <button type="submit" class="btn btn-sm @(user.Roles.Contains("Admin") ? "btn-outline-danger" : "btn-outline-success") fw-semibold">
+                                    <i class="bi @(user.Roles.Contains("Admin") ? "bi-arrow-down-circle" : "bi-arrow-up-circle") me-1"></i>
+                                    @(user.Roles.Contains("Admin") ? "Revoke Admin Access" : "Promote to Admin")
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

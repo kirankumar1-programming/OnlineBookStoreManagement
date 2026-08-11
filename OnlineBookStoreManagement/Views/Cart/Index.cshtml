@@ -1,4 +1,4 @@
-﻿@using OnlineBookStoreManagement.Models.ViewModels
+@using OnlineBookStoreManagement.Models.ViewModels
 
 
 @model ShoppingCartViewModel
@@ -49,8 +49,9 @@ else
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
-                                            <img src="@(string.IsNullOrEmpty(item.Book?.CoverImageUrl) ? "https://via.placeholder.com/60x80" : item.Book.CoverImageUrl)" 
-                                                 alt="@item.Book?.Title" class="rounded border border-secondary" style="width: 50px; height: 65px; object-fit: cover;" />
+                                            <img src="@(string.IsNullOrEmpty(item.Book?.CoverImageUrl) ? "/images/default-book.svg" : item.Book.CoverImageUrl)" 
+                                                 alt="@item.Book?.Title" class="rounded border border-secondary" style="width: 50px; height: 65px; object-fit: cover;"
+                                                 onerror="this.onerror=null; this.src='/images/default-book.svg';" />
                                             <div>
                                                 <h6 class="fw-bold text-white mb-1">@item.Book?.Title</h6>
                                                 <small class="text-muted">by @item.Book?.Author</small>

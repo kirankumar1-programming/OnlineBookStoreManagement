@@ -1,0 +1,100 @@
+@model IEnumerable<OnlineBookStoreManagement.Models.Book>
+@{
+    ViewData["Title"] = "Manage Book Inventory";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="bi bi-book me-2 text-primary"></i> Book Inventory</h2>
+        <p class="text-muted mb-0">Add, update, or remove books from the store catalog.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="Admin" asp-action="Users" class="btn btn-secondary-outline btn-sm">
+            <i class="bi bi-people me-1"></i> Manage Users
+        </a>
+        <a asp-action="Create" class="btn btn-primary-gradient shadow">
+            <i class="bi bi-plus-circle me-1"></i> Add New Book
+        </a>
+    </div>
+</div>
+
+<div class="card bg-card border-secondary shadow-lg overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-custom align-middle mb-0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="width: 75px;">Cover</th>
+                    <th style="width: 26%;">Book Details</th>
+                    <th style="width: 14%;">Category</th>
+                    <th style="width: 14%;">ISBN</th>
+                    <th class="text-end" style="width: 12%;">Price</th>
+                    <th class="text-center" style="width: 16%;">Stock</th>
+                    <th class="text-center" style="width: 18%;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td style="width: 75px; vertical-align: middle;">
+                            <div style="width: 48px; height: 64px; background-color: #1e293b; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                                <img src="@(string.IsNullOrWhiteSpace(item.CoverImageUrl) ? "/images/default-book.svg" : item.CoverImageUrl)"
+                                     alt="@item.Title"
+                                     width="48"
+                                     height="64"
+                                     class="rounded border border-secondary shadow-sm"
+                                     style="width: 48px; height: 64px; object-fit: cover; display: block;"
+                                     onerror="this.onerror=null; this.src='/images/default-book.svg';" />
+                            </div>
+                        </td>
+                        <td style="vertical-align: middle; overflow: hidden; text-overflow: ellipsis;">
+                            <h6 class="fw-bold text-white mb-0 text-truncate" title="@item.Title">@item.Title</h6>
+                            <small class="text-muted text-truncate d-block">by @item.Author</small>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span class="badge bg-dark border border-secondary text-accent fw-bold">
+                                @(item.Category?.Name ?? "Unassigned")
+                            </span>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span class="font-monospace text-muted small">@item.ISBN</span>
+                        </td>
+                        <td class="text-end fw-bold text-accent font-monospace" style="vertical-align: middle;">
+                            ₹@item.Price.ToString("N2")
+                        </td>
+                        <td class="text-center" style="vertical-align: middle;">
+                            @if (item.StockQuantity > 10)
+                            {
+                                <span class="badge bg-success bg-opacity-25 text-success fw-bold px-3 py-1.5 rounded-pill">
+                                    <i class="bi bi-check-circle me-1"></i> @item.StockQuantity Copies
+                                </span>
+                            }
+                            else if (item.StockQuantity > 0)
+                            {
+                                <span class="badge bg-warning bg-opacity-25 text-warning fw-bold px-3 py-1.5 rounded-pill">
+                                    <i class="bi bi-exclamation-triangle me-1"></i> @item.StockQuantity Left
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger bg-opacity-25 text-danger fw-bold px-3 py-1.5 rounded-pill">
+                                    <i class="bi bi-x-circle me-1"></i> Out of Stock
+                                </span>
+                            }
+                        </td>
+                        <td class="text-center" style="vertical-align: middle;">
+                            <div class="btn-group btn-group-sm">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-info" title="Edit Book">
+                                    <i class="bi bi-pencil-square me-1"></i> Edit
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger" title="Delete Book">
+                                    <i class="bi bi-trash me-1"></i> Delete
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
