@@ -1,5 +1,6 @@
 name: Build and Deploy ASP.NET Core App to Azure Web App
 
+# Trigger automated build and deployment on push
 on:
   push:
     branches:
