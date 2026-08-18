@@ -1,0 +1,4 @@
+
+# Publish profile secrets
+publish_profile.xml
+*.PublishSettings
