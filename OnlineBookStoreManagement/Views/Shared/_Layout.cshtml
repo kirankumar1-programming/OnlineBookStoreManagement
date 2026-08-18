@@ -1,9 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MyBookStore</title>
+    <!-- Inline script to prevent FOUC (Flash of Unstyled Content) -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -29,7 +42,14 @@
                         </li>
                     </ul>
 
-                    <partial name="_LoginPartial" />
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Theme Toggle Button -->
+                        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle dark/light theme" title="Toggle dark/light mode">
+                            <i class="bi bi-sun-fill" id="themeToggleIcon"></i>
+                        </button>
+
+                        <partial name="_LoginPartial" />
+                    </div>
                 </div>
             </div>
         </nav>
@@ -42,7 +62,7 @@
 
     <footer>
         <div class="container text-center">
-            <p class="mb-1 fw-semibold text-light">&copy; @DateTime.UtcNow.Year BookVerse Management System. Built with ASP.NET Core &amp; EF Core.</p>
+            <p class="mb-1 fw-semibold text-light">&copy; @DateTime.UtcNow.Year MyBookStore Management System. Built with ASP.NET Core &amp; EF Core.</p>
             <small class="text-muted">Designed for fast, secure &amp; seamless online bookstore management.</small>
         </div>
     </footer>
@@ -50,6 +70,36 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('themeToggleBtn');
+            const toggleIcon = document.getElementById('themeToggleIcon');
+
+            function updateToggleIcon(theme) {
+                if (theme === 'light') {
+                    toggleIcon.className = 'bi bi-moon-stars-fill';
+                    toggleBtn.setAttribute('title', 'Switch to Dark Mode');
+                } else {
+                    toggleIcon.className = 'bi bi-sun-fill';
+                    toggleBtn.setAttribute('title', 'Switch to Light Mode');
+                }
+            }
+
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            updateToggleIcon(currentTheme);
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-theme', theme);
+                    localStorage.setItem('theme', theme);
+                    updateToggleIcon(theme);
+                });
+            }
+        });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

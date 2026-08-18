@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Data;
 using OnlineBookStoreManagement.Models;
+using OnlineBookStoreManagement.Models.ViewModels;
+using OnlineBookStoreManagement.Services;
 
 namespace OnlineBookStoreManagement.Controllers
 {
@@ -13,11 +15,16 @@ namespace OnlineBookStoreManagement.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IBookBulkUploadService _bulkUploadService;
 
-        public BooksController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public BooksController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IBookBulkUploadService bulkUploadService)
         {
             _context = context;
             _userManager = userManager;
+            _bulkUploadService = bulkUploadService;
         }
 
         private async Task<bool> CheckAdminAccessAsync()
@@ -169,6 +176,59 @@ namespace OnlineBookStoreManagement.Controllers
                 TempData["SuccessMessage"] = $"Book \"{book.Title}\" deleted successfully!";
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: /Books/BulkUpload
+        public async Task<IActionResult> BulkUpload()
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            return View(new BulkUploadViewModel());
+        }
+
+        // POST: /Books/BulkUpload
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BulkUpload(BulkUploadViewModel model)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            if (model.File == null || model.File.Length == 0)
+            {
+                ModelState.AddModelError("File", "Please select a valid CSV or Excel file to upload.");
+                return View(model);
+            }
+
+            var result = await _bulkUploadService.ProcessBulkUploadAsync(model.File);
+            ViewBag.UploadResult = result;
+
+            if (result.SuccessCount > 0)
+            {
+                TempData["SuccessMessage"] = $"Bulk upload completed! Successfully imported {result.SuccessCount} book(s).";
+            }
+            else if (result.FailureCount > 0)
+            {
+                TempData["ErrorMessage"] = "Bulk upload completed with errors. Please inspect the log below.";
+            }
+
+            return View(model);
+        }
+
+        // GET: /Books/DownloadTemplate
+        public async Task<IActionResult> DownloadTemplate(string format = "csv")
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            if (string.Equals(format, "excel", StringComparison.OrdinalIgnoreCase) || string.Equals(format, "xlsx", StringComparison.OrdinalIgnoreCase))
+            {
+                var excelBytes = _bulkUploadService.GenerateSampleExcelTemplate();
+                return File(excelBytes, "application/vnd.ms-excel", "book_import_template.csv");
+            }
+            else
+            {
+                var csvBytes = _bulkUploadService.GenerateSampleCsvTemplate();
+                return File(csvBytes, "text/csv", "book_import_template.csv");
+            }
         }
 
         private bool BookExists(int id)

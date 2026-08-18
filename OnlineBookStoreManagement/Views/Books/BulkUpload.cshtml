@@ -1,0 +1,153 @@
+@model OnlineBookStoreManagement.Models.ViewModels.BulkUploadViewModel
+@using OnlineBookStoreManagement.Models.ViewModels
+@{
+    ViewData["Title"] = "Bulk Upload Books";
+    var result = ViewBag.UploadResult as BulkUploadResultViewModel;
+}
+
+<div class="row justify-content-center py-2">
+    <div class="col-lg-10">
+        <div class="card bg-card border-secondary shadow-lg p-4 p-md-5 mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom border-secondary">
+                <div>
+                    <h3 class="fw-bold text-white mb-1"><i class="bi bi-file-earmark-spreadsheet me-2 text-primary"></i> Bulk Upload Books</h3>
+                    <p class="text-muted small mb-0">Upload multiple books at once using a CSV or Excel (.xlsx, .xls) spreadsheet.</p>
+                </div>
+                <a asp-action="Index" class="btn btn-secondary-outline btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Inventory
+                </a>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <!-- File Upload Form -->
+                <div class="col-md-7">
+                    <form asp-action="BulkUpload" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label asp-for="File" class="form-label text-white fw-semibold mb-2"></label>
+                            <input asp-for="File" type="file" class="form-control form-control-custom" accept=".csv, .xlsx, .xls" required />
+                            <span asp-validation-for="File" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary-gradient px-4 shadow">
+                                <i class="bi bi-cloud-upload me-1"></i> Upload and Import Books
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Template Download & Instructions Card -->
+                <div class="col-md-5">
+                    <div class="p-3 rounded bg-dark border border-secondary">
+                        <h6 class="fw-bold text-accent mb-2"><i class="bi bi-info-circle me-1"></i> File Guidelines</h6>
+                        <ul class="text-muted small mb-3 ps-3">
+                            <li>Supported formats: <strong>.csv</strong>, <strong>.xlsx</strong>, <strong>.xls</strong></li>
+                            <li>Required columns: <strong>Title</strong>, <strong>Author</strong>, <strong>Price</strong></li>
+                            <li>Optional columns: <strong>ISBN</strong>, <strong>StockQuantity</strong>, <strong>Category</strong>, <strong>Description</strong>, <strong>CoverImageUrl</strong></li>
+                            <li>If a category name does not exist, it will be automatically created.</li>
+                        </ul>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a asp-action="DownloadTemplate" asp-route-format="csv" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-download me-1"></i> Download CSV Template
+                            </a>
+                            <a asp-action="DownloadTemplate" asp-route-format="excel" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-file-earmark-excel me-1"></i> Download Excel Template
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (result != null)
+        {
+            <div class="card bg-card border-secondary shadow-lg p-4 p-md-5 mb-4">
+                <h4 class="fw-bold text-white mb-3"><i class="bi bi-card-checklist me-2 text-info"></i> Upload Processing Report</h4>
+                <p class="text-muted small mb-4">File: <strong class="text-white">@result.FileName</strong></p>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="p-3 bg-dark border border-secondary rounded text-center">
+                            <span class="text-muted small d-block">Processed</span>
+                            <span class="fs-3 fw-bold text-white">@result.TotalRowsProcessed</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-dark border border-success border-opacity-50 rounded text-center">
+                            <span class="text-muted small d-block">Succeeded</span>
+                            <span class="fs-3 fw-bold text-success">@result.SuccessCount</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-dark border border-warning border-opacity-50 rounded text-center">
+                            <span class="text-muted small d-block">Warnings</span>
+                            <span class="fs-3 fw-bold text-warning">@result.WarningCount</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-dark border border-danger border-opacity-50 rounded text-center">
+                            <span class="text-muted small d-block">Failed</span>
+                            <span class="fs-3 fw-bold text-danger">@result.FailureCount</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (result.RowResults.Any())
+                {
+                    <h6 class="fw-bold text-white mb-2">Row Details:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-custom align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 70px;">Row #</th>
+                                    <th style="width: 110px;">Status</th>
+                                    <th style="width: 25%;">Book Title</th>
+                                    <th style="width: 20%;">Author</th>
+                                    <th>Processing Log</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in result.RowResults)
+                                {
+                                    <tr>
+                                        <td class="font-monospace text-muted fw-bold">#@row.RowNumber</td>
+                                        <td>
+                                            @if (row.Status == "Success")
+                                            {
+                                                <span class="badge bg-success bg-opacity-25 text-success border border-success fw-bold px-2 py-1">
+                                                    <i class="bi bi-check-circle me-1"></i> Success
+                                                </span>
+                                            }
+                                            else if (row.Status == "Warning")
+                                            {
+                                                <span class="badge bg-warning bg-opacity-25 text-warning border border-warning fw-bold px-2 py-1">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i> Warning
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger bg-opacity-25 text-danger border border-danger fw-bold px-2 py-1">
+                                                    <i class="bi bi-x-circle me-1"></i> Failed
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="fw-semibold text-white">@(string.IsNullOrEmpty(row.Title) ? "-" : row.Title)</td>
+                                        <td class="text-muted">@(string.IsNullOrEmpty(row.Author) ? "-" : row.Author)</td>
+                                        <td>
+                                            <ul class="list-unstyled mb-0 small text-muted">
+                                                @foreach (var msg in row.Messages)
+                                                {
+                                                    <li><i class="bi bi-dot me-1"></i>@msg</li>
+                                                }
+                                            </ul>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

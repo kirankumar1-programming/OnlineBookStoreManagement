@@ -59,7 +59,7 @@ namespace OnlineBookStoreManagement.Controllers
                 {
                     await _userManager.AddToRoleAsync(user, DbInitializer.Role_Customer);
                     await _signInManager.SignInAsync(user, isPersistent: false);
-                    TempData["SuccessMessage"] = $"Welcome to BookVerse, {user.FullName}!";
+                    TempData["SuccessMessage"] = $"Welcome to MyBookStore, {user.FullName}!";
                     return LocalRedirect(returnUrl);
                 }
 

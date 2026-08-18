@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Technical Architecture & System Documentation - OnlineBookStoreManagement</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 20mm 15mm;
+        }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff;
+        }
+        .header-card {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .header-card h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .header-card p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 15px;
+        }
+        .badge-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h2 {
+            color: #0f172a;
+            font-size: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            page-break-after: avoid;
+        }
+        h3 {
+            color: #334155;
+            font-size: 16px;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+            page-break-inside: avoid;
+        }
+        th {
+            background-color: #f8fafc;
+            color: #334155;
+            font-weight: 600;
+            text-align: left;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        td {
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+        }
+        tr:nth-child(even) td {
+            background-color: #fcfcfd;
+        }
+        .callout {
+            background-color: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+            font-size: 14px;
+            page-break-inside: avoid;
+        }
+        .callout-title {
+            font-weight: 700;
+            color: #0369a1;
+            margin-bottom: 5px;
+        }
+        pre {
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 18px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            page-break-inside: avoid;
+        }
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        .diagram-box {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre;
+            overflow-x: auto;
+            page-break-inside: avoid;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-card">
+        <h1>Technical Architecture & System Documentation</h1>
+        <p>OnlineBookStoreManagement System (ASP.NET Core 10 & Azure Web Apps)</p>
+        <div class="badge-container">
+            <span class="badge">Version 1.0.0</span>
+            <span class="badge">Framework: .NET 10.0</span>
+            <span class="badge">Target: Azure App Service</span>
+            <span class="badge">CI/CD: GitHub Actions</span>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-title">Executive Summary</div>
+        <strong>OnlineBookStoreManagement</strong> is a modern, high-performance, enterprise-grade e-commerce web application engineered with <strong>ASP.NET Core 10 MVC</strong> and <strong>Entity Framework Core 10</strong>. The platform provides full-lifecycle book catalog management, category management, dynamic user reviews, shopping cart processing, claim/role-based security management, and automated continuous integration and deployment (CI/CD) to Microsoft Azure.
+    </div>
+
+    <h2>System Architecture Overview</h2>
+    <div class="diagram-box">
++-------------------------------------------------------------------------------+
+|                             CLIENT / BROWSER TIER                             |
+|              HTTPS Requests (https://app-onlinebookstoremanagement...)        |
++-------------------------------------------------------------------------------+
+                                       |
+                                       v
++-------------------------------------------------------------------------------+
+|                       AZURE APP SERVICE ENVIRONMENT                           |
+|  +-------------------------------------------------------------------------+  |
+|  |                  ASP.NET Core 10 MVC (net10.0) Layer                   |  |
+|  |   - AdminController.cs      - BooksController.cs     - HomeController.cs|  |
+|  +-------------------------------------------------------------------------+  |
+|                                      |                                        |
+|  +-----------------------------------+-------------------------------------+  |
+|  | Identity & Claims Security Engine | Entity Framework Core 10 ORM Engine |  |
+|  | - CheckAdminAccessAsync()         - ApplicationDbContext.cs             |  |
+|  +-----------------------------------+-------------------------------------+  |
+|                                      |                                        |
+|                                      v                                        |
+|                       SQLite Database (bookstore.db)                          |
++-------------------------------------------------------------------------------+
+    </div>
+
+    <h2>1. Technology Stack & Key Dependencies</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Architectural Layer</th>
+                <th>Technology / Package</th>
+                <th>Description / Role</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Runtime & Framework</strong></td>
+                <td>.NET 10.0 (net10.0)</td>
+                <td>Modern, high-performance C# web runtime</td>
+            </tr>
+            <tr>
+                <td><strong>Presentation Layer</strong></td>
+                <td>ASP.NET Core MVC (Razor Views)</td>
+                <td>Server-rendered HTML with modern Glassmorphism UI</td>
+            </tr>
+            <tr>
+                <td><strong>ORM / Data Access</strong></td>
+                <td>Entity Framework Core 10.0</td>
+                <td>Object-Relational Mapper for C# entity queries</td>
+            </tr>
+            <tr>
+                <td><strong>Database Engine</strong></td>
+                <td>SQLite (Microsoft.EntityFrameworkCore.Sqlite)</td>
+                <td>Lightweight, zero-config relational SQL engine</td>
+            </tr>
+            <tr>
+                <td><strong>Identity & Access</strong></td>
+                <td>ASP.NET Core Identity</td>
+                <td>Membership system for passwords, claims, & roles</td>
+            </tr>
+            <tr>
+                <td><strong>Hosting Platform</strong></td>
+                <td>Azure App Service</td>
+                <td>Managed PaaS hosting for ASP.NET Web Applications</td>
+            </tr>
+            <tr>
+                <td><strong>CI/CD Automation</strong></td>
+                <td>GitHub Actions</td>
+                <td>Automated build, test, and release orchestration</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>2. Domain Data Model Schema</h2>
+    <div class="diagram-box">
++------------------+          +------------------+          +------------------+
+| APPLICATION_USER |          |       BOOK       |          |     CATEGORY     |
++------------------+          +------------------+          +------------------+
+| Id (PK)          |<---+    | Id (PK)          |<---+     | Id (PK)          |
+| FullName         |    |    | Title            |    |     | Name             |
+| Email            |    |    | Author           |    |     | Description      |
+| CreatedAt        |    |    | Price            |    |     +------------------+
++------------------+    |    | CategoryId (FK)  |----+              ^
+                        |    | StockQuantity    |                   |
+                        |    +------------------+                   |
+                        |              ^                            |
+                        |              |                            |
+               +--------+-------+  +---+---+                        |
+               |  BOOK_REVIEW   |  | CART  |                        |
+               +----------------+  +-------+                        |
+               | Id (PK)        |  | Id    |                        |
+               | BookId (FK)----+  | BookId|------------------------+
+               | UserId (FK)----+  | UserId|
+               | Rating, Comment|  +-------+
+               +----------------+
+    </div>
+
+    <h2>3. Security & Access Control Architecture</h2>
+    <p>The platform implements multi-layered authentication and robust authorization:</p>
+    <ul>
+        <li><strong>Claim-Based Authorization</strong>: <code>CheckAdminAccessAsync()</code> evaluates Identity roles, claim types, and trusted administrative email domains (<code>admin@bookstore.com</code>).</li>
+        <li><strong>Password Security</strong>: Identity uses PBKDF2 with HMAC-SHA256 and dynamic per-user salt.</li>
+        <li><strong>CSRF Protection</strong>: Form submissions enforce <code>@Html.AntiForgeryToken()</code> and <code>[ValidateAntiForgeryToken]</code> attributes.</li>
+        <li><strong>Publish Profile Encryption</strong>: Deployments to Azure rely on encrypted Publish Profile secrets (<code>AZURE_WEBAPP_PUBLISH_PROFILE</code>) with SCM Basic Auth strictly guarded.</li>
+    </ul>
+
+    <h2>4. Continuous Integration & Deployment (CI/CD)</h2>
+    <p>The project leverages automated <strong>GitHub Actions</strong> workflows triggered on code pushes to the <code>main</code> branch.</p>
+
+    <pre><code>name: Build and Deploy ASP.NET Core App to Azure Web App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: 'app-onlinebookstoremanagement'
+  DOTNET_VERSION: '10.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Build Project
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Publish Web App
+        run: dotnet publish --configuration Release --output ./publish
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish</code></pre>
+
+    <h2>5. Deployment Infrastructure & Operations</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Infrastructure Property</th>
+                <th>Configured Value / Setting</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Azure Web App Name</strong></td>
+                <td><code>app-onlinebookstoremanagement</code></td>
+            </tr>
+            <tr>
+                <td><strong>Resource Group</strong></td>
+                <td><code>app-onlinebookstoremanagement_group</code></td>
+            </tr>
+            <tr>
+                <td><strong>Database Connection String</strong></td>
+                <td><code>Data Source=/home/site/wwwroot/bookstore.db</code> (Type: Custom)</td>
+            </tr>
+            <tr>
+                <td><strong>Production URL</strong></td>
+                <td><a href="https://app-onlinebookstoremanagement.azurewebsites.net">https://app-onlinebookstoremanagement.azurewebsites.net</a></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>6. Quality Assurance & Verification</h2>
+    <ul>
+        <li><strong>Local Compilation</strong>: <code>dotnet build</code> returns 0 Errors.</li>
+        <li><strong>Runtime Server Test</strong>: <code>dotnet run</code> executes cleanly on <code>http://localhost:5059</code>.</li>
+        <li><strong>Image Fallbacks</strong>: Dynamic SVG fallback handlers (<code>onerror="this.src='/images/default-book.svg'"</code>) prevent UI layout shifts.</li>
+    </ul>
+
+    <div class="footer">
+        &copy; 2026 OnlineBookStoreManagement System - Technical Architecture Documentation
+    </div>
+
+</body>
+</html>

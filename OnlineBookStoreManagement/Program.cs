@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Data;
 using OnlineBookStoreManagement.Models;
+using OnlineBookStoreManagement.Services;
 using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,6 +49,8 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+
+builder.Services.AddScoped<IBookBulkUploadService, BookBulkUploadService>();
 
 builder.Services.AddControllersWithViews();
 
