@@ -1,0 +1,50 @@
+@* Chatbot Floating Widget Partial View *@
+<div id="chatbot-widget">
+    <!-- Floating Launcher Button -->
+    <button id="chatbot-launcher" class="chatbot-launcher-btn" type="button" aria-label="Open Bookie Assistant Chatbot" title="Chat with Bookie Assistant">
+        <i class="bi bi-robot"></i>
+        <span class="notification-badge"></span>
+    </button>
+
+    <!-- Floating Chat Window Container -->
+    <div id="chatbot-window" class="chatbot-window">
+        <!-- Chat Header -->
+        <div class="chatbot-header">
+            <div class="chatbot-header-info">
+                <div class="chatbot-avatar">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <div class="chatbot-title-container">
+                    <h6>Bookie Assistant</h6>
+                    <div class="chatbot-status">
+                        <span class="status-dot"></span>
+                        <span>Online &bull; Ready to help</span>
+                    </div>
+                </div>
+            </div>
+            <div class="chatbot-header-actions">
+                <button id="chatbot-clear" class="chatbot-action-btn" type="button" title="Clear Chat History">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button id="chatbot-close" class="chatbot-action-btn" type="button" title="Close Chat">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Scrollable Message Body -->
+        <div id="chatbot-body" class="chatbot-body">
+            <!-- Messages populated dynamically via chatbot.js -->
+        </div>
+
+        <!-- Chat Input Footer -->
+        <div class="chatbot-footer">
+            <div class="chatbot-input-group">
+                <input id="chatbot-input" type="text" class="chatbot-input" placeholder="Ask about books, orders, shipping..." autocomplete="off" maxlength="300" />
+                <button id="chatbot-send" class="chatbot-send-btn" type="button" aria-label="Send Message">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
