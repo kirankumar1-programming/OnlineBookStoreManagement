@@ -1,13 +1,20 @@
 
 
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Data;
 using OnlineBookStoreManagement.Models;
+using OnlineBookStoreManagement.Services;
 using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure SMTP Options & Transactional Email Services
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
+builder.Services.AddTransient<IEmailSenderService, SmtpEmailSenderService>();
+builder.Services.AddTransient<IEmailSender, SmtpEmailSenderService>();
 
 // 1. Add DbContext (SQL Server or SQLite)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

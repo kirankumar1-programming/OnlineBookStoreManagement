@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Data;
 using OnlineBookStoreManagement.Models;
 using OnlineBookStoreManagement.Models.ViewModels;
+using OnlineBookStoreManagement.Services;
 using System.Security.Claims;
 
 namespace OnlineBookStoreManagement.Controllers
@@ -15,15 +16,18 @@ namespace OnlineBookStoreManagement.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ApplicationDbContext _db;
+        private readonly IEmailSenderService _emailSender;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            ApplicationDbContext db)
+            ApplicationDbContext db,
+            IEmailSenderService emailSender)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _db = db;
+            _emailSender = emailSender;
         }
 
         // GET: /Account/Register
@@ -59,7 +63,14 @@ namespace OnlineBookStoreManagement.Controllers
                 {
                     await _userManager.AddToRoleAsync(user, DbInitializer.Role_Customer);
                     await _signInManager.SignInAsync(user, isPersistent: false);
-                    TempData["SuccessMessage"] = $"Welcome to BookVerse, {user.FullName}!";
+
+                    // Send Welcome Email Notification via SMTP
+                    if (!string.IsNullOrEmpty(user.Email))
+                    {
+                        _ = Task.Run(() => _emailSender.SendWelcomeEmailAsync(user.Email, user.FullName ?? user.Email));
+                    }
+
+                    TempData["SuccessMessage"] = $"Welcome to My Book Store, {user.FullName}!";
                     return LocalRedirect(returnUrl);
                 }
 

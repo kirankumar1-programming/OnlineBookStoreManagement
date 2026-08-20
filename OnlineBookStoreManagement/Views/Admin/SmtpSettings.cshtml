@@ -1,0 +1,116 @@
+@model OnlineBookStoreManagement.Services.SmtpSettings
+@{
+    ViewData["Title"] = "SMTP Transactional Email Diagnostics";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1">
+            <i class="bi bi-envelope-check me-2 text-accent"></i> SMTP Transactional Email Diagnostics
+        </h2>
+        <p class="text-muted mb-0">Inspect SMTP configuration parameters and test live email delivery.</p>
+    </div>
+    <a asp-action="Orders" class="btn btn-outline-secondary btn-sm fw-bold">
+        <i class="bi bi-arrow-left me-1"></i> Back to Orders
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Active Configuration Parameters -->
+    <div class="col-lg-7">
+        <div class="card bg-card border-secondary shadow-lg">
+            <div class="card-header border-secondary bg-dark py-3">
+                <h5 class="card-title text-white mb-0">
+                    <i class="bi bi-sliders me-2 text-primary"></i> Active SMTP Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle mb-0">
+                        <tbody>
+                            <tr>
+                                <th class="text-muted" style="width: 40%;">SMTP Host</th>
+                                <td class="fw-semibold text-white">@Model.Host</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">SMTP Port</th>
+                                <td class="fw-semibold text-white">@Model.Port</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">SSL / TLS</th>
+                                <td>
+                                    <span class="badge @(Model.EnableSsl ? "bg-success" : "bg-warning text-dark")">
+                                        @(Model.EnableSsl ? "Enabled (SSL/TLS)" : "Disabled")
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Sender Email</th>
+                                <td class="fw-semibold text-white">@Model.SenderEmail</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Sender Display Name</th>
+                                <td class="fw-semibold text-white">@Model.SenderName</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Notifications Status</th>
+                                <td>
+                                    <span class="badge @(Model.EnableEmailNotifications ? "bg-success" : "bg-danger") px-3 py-1.5 rounded-pill">
+                                        @(Model.EnableEmailNotifications ? "Active" : "Disabled")
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-secondary border-secondary mt-4 mb-0 small">
+                    <i class="bi bi-info-circle me-1 text-info"></i>
+                    <strong>Configuration Note:</strong> SMTP settings are loaded from <code>appsettings.json</code>. Updates can be made directly in configuration files or environment variables.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Live SMTP Test Email Sender -->
+    <div class="col-lg-5">
+        <div class="card bg-card border-secondary shadow-lg">
+            <div class="card-header border-secondary bg-dark py-3">
+                <h5 class="card-title text-white mb-0">
+                    <i class="bi bi-send-check me-2 text-success"></i> Send Diagnostic Test Email
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Send a test transactional email to verify SMTP server credentials, port connectivity, and TLS handshake.
+                </p>
+
+                <form asp-action="SendTestEmail" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label text-light fw-semibold">Target Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-envelope"></i></span>
+                            <input type="email" name="testEmail" placeholder="e.g. user@example.com" class="form-control bg-dark text-white border-secondary" required />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 py-2.5 fw-bold">
+                        <i class="bi bi-rocket-takeoff me-2"></i> Send Test Email Now
+                    </button>
+                </form>
+
+                <hr class="border-secondary my-4" />
+
+                <div class="bg-dark rounded p-3 text-muted small">
+                    <h6 class="text-white fw-bold mb-2"><i class="bi bi-shield-check me-1 text-accent"></i> Transactional Emails Active:</h6>
+                    <ul class="mb-0 ps-3">
+                        <li><strong>Welcome Email:</strong> User Registration</li>
+                        <li><strong>Order Confirmation:</strong> Shopping Cart Checkout</li>
+                        <li><strong>Status Updates:</strong> Order Status Changes</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

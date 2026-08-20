@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Data;
 using OnlineBookStoreManagement.Models;
 using OnlineBookStoreManagement.Models.ViewModels;
+using OnlineBookStoreManagement.Services;
 using System.Security.Claims;
 
 namespace OnlineBookStoreManagement.Controllers
@@ -13,11 +14,13 @@ namespace OnlineBookStoreManagement.Controllers
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailSenderService _emailSender;
 
-        public CartController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        public CartController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IEmailSenderService emailSender)
         {
             _db = db;
             _userManager = userManager;
+            _emailSender = emailSender;
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -261,6 +264,19 @@ namespace OnlineBookStoreManagement.Controllers
             _db.ShoppingCartItems.RemoveRange(cartItems);
 
             await _db.SaveChangesAsync();
+
+            // Fetch order user email and send Order Confirmation Email via SMTP
+            var orderUser = await _userManager.FindByIdAsync(userId!);
+            var recipientEmail = orderUser?.Email;
+            if (!string.IsNullOrEmpty(recipientEmail))
+            {
+                var createdOrderDetails = await _db.OrderDetails
+                    .Include(d => d.Book)
+                    .Where(d => d.OrderHeaderId == orderHeader.Id)
+                    .ToListAsync();
+
+                _ = Task.Run(() => _emailSender.SendOrderConfirmationEmailAsync(recipientEmail, orderHeader, createdOrderDetails));
+            }
 
             TempData["SuccessMessage"] = "Order placed successfully!";
 

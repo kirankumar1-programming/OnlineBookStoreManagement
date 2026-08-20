@@ -33,13 +33,18 @@
         @if (isAdmin)
         {
             <li class="nav-item">
-                <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" ? "active" : "") text-accent" asp-controller="Admin" asp-action="Users">
-                    <i class="bi bi-people me-1"></i> User List
+                <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["action"]?.ToString() == "Orders" ? "active" : "") text-warning" asp-controller="Admin" asp-action="Orders">
+                    <i class="bi bi-box-seam me-1"></i> Orders
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["action"]?.ToString() == "Users" ? "active" : "") text-accent" asp-controller="Admin" asp-action="Users">
+                    <i class="bi bi-people me-1"></i> Users
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Books" ? "active" : "") text-primary" asp-controller="Books" asp-action="Index">
-                    <i class="bi bi-book me-1"></i> Manage Books
+                    <i class="bi bi-book me-1"></i> Inventory
                 </a>
             </li>
         }
@@ -69,6 +74,11 @@
                         <h6 class="dropdown-header text-accent fw-bold"><i class="bi bi-shield-lock me-1"></i> Admin Panel</h6>
                     </li>
                     <li>
+                        <a class="dropdown-item py-2 fw-semibold text-warning" asp-controller="Admin" asp-action="Orders">
+                            <i class="bi bi-box-seam me-2"></i> Manage Customer Orders
+                        </a>
+                    </li>
+                    <li>
                         <a class="dropdown-item py-2 fw-semibold text-accent" asp-controller="Admin" asp-action="Users">
                             <i class="bi bi-people me-2"></i> User List &amp; Roles
                         </a>
@@ -76,6 +86,11 @@
                     <li>
                         <a class="dropdown-item py-2 fw-semibold text-primary" asp-controller="Books" asp-action="Index">
                             <i class="bi bi-book me-2"></i> Manage Books &amp; Inventory
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold text-info" asp-controller="Admin" asp-action="SmtpSettings">
+                            <i class="bi bi-envelope-check me-2"></i> SMTP Email Diagnostics
                         </a>
                     </li>
                     <li>

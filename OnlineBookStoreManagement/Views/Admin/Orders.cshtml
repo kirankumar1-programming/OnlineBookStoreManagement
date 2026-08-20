@@ -1,0 +1,112 @@
+@model IEnumerable<OnlineBookStoreManagement.Models.OrderHeader>
+@{
+    ViewData["Title"] = "Manage Customer Orders";
+    var currentFilter = ViewData["StatusFilter"] as string ?? "All";
+    var statuses = new string[] { "All", "Pending", "Processing", "Shipped", "Delivered", "Cancelled" };
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="bi bi-box-seam me-2 text-accent"></i> Customer Orders &amp; Notifications</h2>
+        <p class="text-muted mb-0">View customer orders, update delivery progress, and send automated SMTP email status updates.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="SmtpSettings" class="btn btn-outline-info btn-sm fw-bold">
+            <i class="bi bi-gear-wide-connected me-1"></i> SMTP Diagnostics
+        </a>
+        <a asp-controller="Books" asp-action="Index" class="btn btn-primary-gradient btn-sm fw-bold">
+            <i class="bi bi-book me-1"></i> Manage Inventory
+        </a>
+    </div>
+</div>
+
+<!-- Filter Pills -->
+<div class="card bg-card border-secondary mb-4">
+    <div class="card-body p-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="text-muted fw-bold me-2"><i class="bi bi-filter me-1"></i> Filter by Status:</span>
+            @foreach (var status in statuses)
+            {
+                var isActive = currentFilter == status;
+                <a asp-action="Orders" asp-route-statusFilter="@status"
+                   class="btn btn-sm @(isActive ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3 fw-semibold">
+                    @status
+                </a>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="card bg-card border-secondary shadow-lg overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-custom align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Customer Name</th>
+                    <th>Order Date</th>
+                    <th>Total Amount</th>
+                    <th>Payment Status</th>
+                    <th>Order Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            No orders found matching the filter "@currentFilter".
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        var badgeClass = item.OrderStatus?.ToLower() switch
+                        {
+                            "delivered" => "bg-success",
+                            "shipped" => "bg-primary",
+                            "processing" => "bg-warning text-dark",
+                            "cancelled" => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+
+                        <tr>
+                            <td>
+                                <span class="fw-bold text-white font-monospace">#@item.Id</span>
+                            </td>
+                            <td>
+                                <div>
+                                    <h6 class="fw-bold text-white mb-0">@item.Name</h6>
+                                    <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>@item.City</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="text-light">@item.OrderDate.ToString("dd MMM yyyy, HH:mm")</span>
+                            </td>
+                            <td>
+                                <span class="fw-bold text-accent">₹@item.OrderTotal.ToString("F2")</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-dark border border-secondary text-light">@item.PaymentStatus</span>
+                            </td>
+                            <td>
+                                <span class="badge @badgeClass rounded-pill px-3 py-1.5 fw-bold">
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i> @item.OrderStatus
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="OrderDetails" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary fw-semibold">
+                                    <i class="bi bi-eye me-1"></i> View &amp; Update
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

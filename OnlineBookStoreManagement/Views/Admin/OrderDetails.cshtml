@@ -1,0 +1,140 @@
+@model OnlineBookStoreManagement.Models.OrderHeader
+@{
+    ViewData["Title"] = $"Order #{Model.Id} Details";
+    var statuses = new string[] { "Pending", "Processing", "Shipped", "Delivered", "Cancelled" };
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <a asp-action="Orders" class="text-decoration-none text-muted mb-2 d-inline-block fw-semibold">
+            <i class="bi bi-arrow-left me-1"></i> Back to Orders List
+        </a>
+        <h2 class="fw-bold text-white mb-1">
+            <i class="bi bi-receipt me-2 text-accent"></i> Order Reference #@Model.Id
+        </h2>
+    </div>
+    <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
+        Current Status: @Model.OrderStatus
+    </span>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Customer & Order Details -->
+    <div class="col-lg-8">
+        <!-- Order Items -->
+        <div class="card bg-card border-secondary shadow-lg mb-4">
+            <div class="card-header border-secondary bg-dark py-3">
+                <h5 class="card-title text-white mb-0"><i class="bi bi-bag me-2 text-primary"></i> Ordered Books</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Book Details</th>
+                            <th class="text-center">Quantity</th>
+                            <th class="text-end">Unit Price</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var detail in Model.OrderDetails)
+                        {
+                            var book = detail.Book;
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img src="@(string.IsNullOrEmpty(book?.CoverImageUrl) ? "/images/default-book.png" : book.CoverImageUrl)"
+                                             alt="@book?.Title" style="width: 45px; height: 60px; object-fit: cover;" class="rounded border border-secondary" />
+                                        <div>
+                                            <h6 class="fw-bold text-white mb-0">@(book?.Title ?? "Book Item")</h6>
+                                            <small class="text-muted">by @(book?.Author ?? "Unknown Author")</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center font-monospace fw-bold text-white">@detail.Count</td>
+                                <td class="text-end text-light">₹@detail.Price.ToString("F2")</td>
+                                <td class="text-end fw-bold text-accent">₹@((detail.Price * detail.Count).ToString("F2"))</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-dark">
+                            <td colspan="3" class="text-end fw-bold text-white">Grand Total:</td>
+                            <td class="text-end fw-bold text-accent fs-5">₹@Model.OrderTotal.ToString("F2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Customer & Shipping Info -->
+        <div class="card bg-card border-secondary shadow-lg">
+            <div class="card-header border-secondary bg-dark py-3">
+                <h5 class="card-title text-white mb-0"><i class="bi bi-person-lines-fill me-2 text-info"></i> Customer &amp; Shipping Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-bold">CUSTOMER NAME</label>
+                        <p class="fw-semibold text-white mb-0">@Model.Name</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-bold">CUSTOMER EMAIL</label>
+                        <p class="fw-semibold text-white mb-0"><i class="bi bi-envelope me-1 text-primary"></i>@(Model.User?.Email ?? "N/A")</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-bold">PHONE NUMBER</label>
+                        <p class="fw-semibold text-white mb-0"><i class="bi bi-telephone me-1 text-success"></i>@(string.IsNullOrEmpty(Model.PhoneNumber) ? "Not Provided" : Model.PhoneNumber)</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small fw-bold">ORDER DATE</label>
+                        <p class="fw-semibold text-white mb-0">@Model.OrderDate.ToString("dd MMMM yyyy, HH:mm") UTC</p>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted small fw-bold">SHIPPING ADDRESS</label>
+                        <p class="fw-semibold text-white mb-0">@Model.StreetAddress, @Model.City - @Model.PostalCode</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Order Status Management Form -->
+    <div class="col-lg-4">
+        <div class="card bg-card border-secondary shadow-lg sticky-top" style="top: 80px;">
+            <div class="card-header border-secondary bg-dark py-3">
+                <h5 class="card-title text-white mb-0">
+                    <i class="bi bi-arrow-repeat me-2 text-warning"></i> Update Order Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info border-info py-2 small mb-3">
+                    <i class="bi bi-envelope-paper me-1"></i> Changing order status will automatically send an SMTP transactional email notification to the customer.
+                </div>
+
+                <form asp-action="UpdateOrderStatus" method="post">
+                    <input type="hidden" name="orderId" value="@Model.Id" />
+
+                    <div class="mb-3">
+                        <label class="form-label text-light fw-semibold">Order Status</label>
+                        <select name="orderStatus" class="form-select bg-dark text-white border-secondary">
+                            @foreach (var s in statuses)
+                            {
+                                <option value="@s" selected="@(Model.OrderStatus == s ? "selected" : null)">@s</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-light fw-semibold">Payment Status</label>
+                        <input type="text" name="paymentStatus" value="@Model.PaymentStatus" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-gradient w-100 py-2 fw-bold">
+                        <i class="bi bi-send-check me-2"></i> Save &amp; Notify Customer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
