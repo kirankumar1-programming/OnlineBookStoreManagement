@@ -297,6 +297,12 @@ select option {
     transition: all 0.2s ease;
 }
 
+.btn-secondary-outline.btn-sm {
+    padding: 0.35rem 0.75rem !important;
+    font-size: 0.825rem !important;
+    white-space: nowrap !important;
+}
+
 .btn-secondary-outline:hover {
     background: var(--bg-card-hover);
     color: #ffffff !important;
@@ -463,3 +469,81 @@ footer {
         color: #000000 !important;
     }
 }
+
+/* Mobile Viewport Lock & Alignment Fixes */
+html, body {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    h1, .display-5 {
+        font-size: 1.5rem !important;
+        line-height: 1.3 !important;
+        word-break: break-word !important;
+    }
+
+    .hero-banner {
+        padding: 1.25rem 1rem !important;
+    }
+
+    .hero-banner form {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .hero-banner form .btn {
+        width: 100% !important;
+        margin-top: 0.5rem;
+    }
+
+    .navbar-brand-logo {
+        font-size: 1.25rem !important;
+    }
+
+    main {
+        padding-bottom: 80px !important;
+    }
+
+    .book-card-body {
+        padding: 0.85rem !important;
+    }
+
+    .price-tag {
+        font-size: 1.1rem !important;
+    }
+
+    .book-card-body .btn-secondary-outline.btn-sm {
+        padding: 0.3rem 0.55rem !important;
+        font-size: 0.78rem !important;
+    }
+}
+
+/* Custom Global WebKit Scrollbar Styling for WebView */
+::-webkit-scrollbar {
+    width: 8px !important;
+    height: 8px !important;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a !important;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155 !important;
+    border-radius: 4px !important;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #6366f1 !important;
+}
+
+/* Price & Amount Formatting Protection */
+.price-tag, .text-accent, .display-5.text-accent, .fs-2.text-accent {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    word-wrap: normal !important;
+    display: inline-block !important;
+}

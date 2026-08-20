@@ -18,19 +18,22 @@ namespace OnlineBookStoreManagement.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IEmailSenderService _emailSender;
         private readonly SmtpSettings _smtpSettings;
+        private readonly ILowStockDigestService _digestService;
 
         public AdminController(
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
             ApplicationDbContext db,
             IEmailSenderService emailSender,
-            IOptions<SmtpSettings> smtpSettings)
+            IOptions<SmtpSettings> smtpSettings,
+            ILowStockDigestService digestService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _db = db;
             _emailSender = emailSender;
             _smtpSettings = smtpSettings.Value;
+            _digestService = digestService;
         }
 
         private async Task<bool> CheckAdminAccessAsync()
@@ -211,6 +214,35 @@ namespace OnlineBookStoreManagement.Controllers
             }
 
             return RedirectToAction(nameof(SmtpSettings));
+        }
+
+        // GET: /Admin/LowStockDigest
+        public async Task<IActionResult> LowStockDigest(int? threshold)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            var report = await _digestService.GetLowStockReportAsync(threshold);
+            return View(report);
+        }
+
+        // POST: /Admin/SendLowStockDigest
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendLowStockDigest(int? threshold)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            var result = await _digestService.SendLowStockDigestAsync(threshold);
+            if (result.Success)
+            {
+                TempData["SuccessMessage"] = result.Message;
+            }
+            else
+            {
+                TempData["ErrorMessage"] = result.Message;
+            }
+
+            return RedirectToAction(nameof(LowStockDigest), new { threshold });
         }
     }
 }

@@ -16,6 +16,11 @@ builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpS
 builder.Services.AddTransient<IEmailSenderService, SmtpEmailSenderService>();
 builder.Services.AddTransient<IEmailSender, SmtpEmailSenderService>();
 
+// Configure Low-Stock Admin Digest Options & Services
+builder.Services.Configure<LowStockSettings>(builder.Configuration.GetSection("LowStockSettings"));
+builder.Services.AddScoped<ILowStockDigestService, LowStockDigestService>();
+builder.Services.AddHostedService<LowStockDigestBackgroundService>();
+
 // 1. Add DbContext (SQL Server or SQLite)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")

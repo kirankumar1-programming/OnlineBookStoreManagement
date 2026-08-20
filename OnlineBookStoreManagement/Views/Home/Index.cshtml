@@ -167,15 +167,15 @@
                                     }
                                 </div>
 
-                                <div class="mt-auto pt-2 d-flex align-items-center justify-content-between">
-                                    <div>
+                                <div class="mt-auto pt-2 d-flex align-items-center justify-content-between gap-2">
+                                    <div class="min-w-0">
                                         <div class="price-tag">₹@book.Price.ToString("N2")</div>
-                                        <small class="@(book.StockQuantity > 0 ? "text-success" : "text-danger") fw-bold">
+                                        <small class="@(book.StockQuantity > 0 ? "text-success" : "text-danger") fw-bold text-nowrap d-block">
                                             <i class="bi @(book.StockQuantity > 0 ? "bi-check-circle" : "bi-x-circle") me-1"></i>
                                             @(book.StockQuantity > 0 ? $"{book.StockQuantity} In Stock" : "Out of Stock")
                                         </small>
                                     </div>
-                                    <a asp-action="Details" asp-route-id="@book.Id" class="btn btn-secondary-outline btn-sm">
+                                    <a asp-action="Details" asp-route-id="@book.Id" class="btn btn-secondary-outline btn-sm text-nowrap flex-shrink-0">
                                         Details <i class="bi bi-arrow-right ms-1"></i>
                                     </a>
                                 </div>

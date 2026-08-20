@@ -47,6 +47,11 @@
                     <i class="bi bi-book me-1"></i> Inventory
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["action"]?.ToString() == "LowStockDigest" ? "active" : "") text-danger" asp-controller="Admin" asp-action="LowStockDigest">
+                    <i class="bi bi-bell me-1"></i> Stock Digest
+                </a>
+            </li>
         }
 
         <li class="nav-item">
@@ -72,6 +77,11 @@
                 {
                     <li>
                         <h6 class="dropdown-header text-accent fw-bold"><i class="bi bi-shield-lock me-1"></i> Admin Panel</h6>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold text-warning" asp-controller="Admin" asp-action="LowStockDigest">
+                            <i class="bi bi-bell-fill me-2"></i> Low-Stock Admin Digest
+                        </a>
                     </li>
                     <li>
                         <a class="dropdown-item py-2 fw-semibold text-warning" asp-controller="Admin" asp-action="Orders">

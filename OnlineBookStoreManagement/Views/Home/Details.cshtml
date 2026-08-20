@@ -9,7 +9,7 @@
     </a>
 </div>
 
-<div class="card bg-card border-secondary shadow-lg p-4 mb-5">
+<div class="card bg-card border-secondary shadow-lg p-3 p-sm-4 mb-5">
     <div class="row g-4">
         <!-- Cover Image -->
         <div class="col-md-5 col-lg-4 text-center">
@@ -23,7 +23,7 @@
         <!-- Book Information -->
         <div class="col-md-7 col-lg-8 d-flex flex-column">
             <div>
-                <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                     <span class="badge bg-primary text-uppercase px-3 py-2">@Model.Book.Category?.Name</span>
                     <span class="badge bg-dark border border-secondary text-muted font-monospace">ISBN: @Model.Book.ISBN</span>
                 </div>
@@ -31,29 +31,31 @@
                 <p class="fs-5 text-muted mb-3">by <strong class="text-light">@Model.Book.Author</strong></p>
 
                 <!-- Average Star Rating Banner -->
-                <div class="d-flex align-items-center gap-2 mb-4 p-3 bg-dark rounded-3 border border-secondary">
-                    <div class="d-flex text-warning fs-5">
-                        @for (int i = 1; i <= 5; i++)
-                        {
-                            if (i <= Math.Round(Model.Book.AverageRating))
+                <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 mb-4 p-3 bg-dark rounded-3 border border-secondary">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex text-warning fs-5 flex-nowrap">
+                            @for (int i = 1; i <= 5; i++)
                             {
-                                <i class="bi bi-star-fill"></i>
+                                if (i <= Math.Round(Model.Book.AverageRating))
+                                {
+                                    <i class="bi bi-star-fill"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-star text-muted"></i>
+                                }
                             }
-                            else
-                            {
-                                <i class="bi bi-star text-muted"></i>
-                            }
-                        }
+                        </div>
+                        <span class="fw-bold text-white fs-5">@Model.Book.AverageRating</span>
                     </div>
-                    <span class="fw-bold text-white fs-5 ms-1">@Model.Book.AverageRating</span>
-                    <span class="text-muted">out of 5 (@Model.Book.ReviewCount @(Model.Book.ReviewCount == 1 ? "review" : "reviews"))</span>
+                    <span class="text-muted small">out of 5 (@Model.Book.ReviewCount @(Model.Book.ReviewCount == 1 ? "review" : "reviews"))</span>
                 </div>
 
-                <div class="d-flex align-items-baseline gap-3 mb-4">
-                    <div class="display-5 fw-extrabold text-accent">₹@Model.Book.Price.ToString("N2")</div>
+                <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-baseline gap-2 mb-4">
+                    <div class="fs-2 fw-extrabold text-accent text-nowrap">₹@Model.Book.Price.ToString("N2")</div>
                     @if (Model.Book.StockQuantity > 0)
                     {
-                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2">
+                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 text-wrap">
                             <i class="bi bi-check-circle-fill me-1"></i> In Stock (@Model.Book.StockQuantity copies available)
                         </span>
                     }
@@ -75,24 +77,20 @@
             <div class="mt-auto pt-3 border-top border-secondary">
                 @if (Model.Book.StockQuantity > 0)
                 {
-                    <form asp-controller="Cart" asp-action="AddToCart" method="post" class="row g-3 align-items-center">
+                    <form asp-controller="Cart" asp-action="AddToCart" method="post" class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-3">
                         <input type="hidden" name="bookId" value="@Model.Book.Id" />
-                        <div class="col-auto">
-                            <label class="form-label text-muted fw-bold mb-0 me-2">Quantity:</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label text-muted fw-bold mb-0">Quantity:</label>
+                            <input type="number" name="quantity" value="1" min="1" max="@Model.Book.StockQuantity" class="form-control form-control-custom text-center fw-bold" style="width: 80px;" />
                         </div>
-                        <div class="col-auto">
-                            <input type="number" name="quantity" value="1" min="1" max="@Model.Book.StockQuantity" class="form-control form-control-custom text-center fw-bold" style="width: 90px;" />
-                        </div>
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-primary-gradient px-4 py-2">
-                                <i class="bi bi-cart-plus-fill me-2"></i> Add to Shopping Cart
-                            </button>
-                        </div>
+                        <button type="submit" class="btn btn-primary-gradient py-2 px-4 w-100 w-sm-auto fw-bold">
+                            <i class="bi bi-cart-plus-fill me-2"></i> Add to Cart
+                        </button>
                     </form>
                 }
                 else
                 {
-                    <button class="btn btn-secondary disabled opacity-50 px-4 py-2">
+                    <button class="btn btn-secondary disabled opacity-50 px-4 py-2 w-100 w-sm-auto">
                         <i class="bi bi-slash-circle me-2"></i> Currently Unavailable
                     </button>
                 }
@@ -101,17 +99,23 @@
     </div>
 </div>
 
-<!-- Customer Reviews & Ratings Section -->
+<!-- Customer Reviews Section -->
 <div class="row g-4 mb-5">
+    <!-- Reviews List -->
     <div class="col-lg-7">
         <div class="card bg-card border-secondary shadow-lg p-4 h-100">
-            <h4 class="fw-bold text-white mb-4"><i class="bi bi-chat-left-quote me-2 text-primary"></i> Customer Reviews (@Model.Book.ReviewCount)</h4>
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h4 class="fw-bold text-white mb-0">
+                    <i class="bi bi-chat-square-text me-2 text-accent"></i> Customer Reviews
+                </h4>
+                <span class="badge bg-primary rounded-pill fs-6 px-3 py-2">@Model.Book.Reviews.Count</span>
+            </div>
 
             @if (!Model.Book.Reviews.Any())
             {
-                <div class="p-4 text-center text-muted">
-                    <i class="bi bi-chat-square-text display-4 mb-2 d-block"></i>
-                    No customer reviews yet. Be the first to rate and review this book!
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-chat-left-dots fs-1 d-block mb-3 opacity-50"></i>
+                    <p class="fs-6">No customer reviews yet. Be the first to read and review this book!</p>
                 </div>
             }
             else
@@ -120,18 +124,18 @@
                     @foreach (var review in Model.Book.Reviews.OrderByDescending(r => r.ReviewDate))
                     {
                         <div class="p-3 bg-dark rounded-3 border border-secondary">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: 700;">
+                            <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-2">
+                                <div class="d-flex align-items-center gap-2 min-w-0">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width: 34px; height: 34px; font-weight: 700;">
                                         @(review.User?.FullName?.Substring(0, 1).ToUpper() ?? "C")
                                     </div>
-                                    <div>
-                                        <h6 class="fw-bold text-white mb-0">@(review.User?.FullName ?? "Verified Reader")</h6>
-                                        <small class="text-muted">@review.ReviewDate.ToString("MMM dd, yyyy")</small>
+                                    <div class="min-w-0">
+                                        <h6 class="fw-bold text-white mb-0 text-truncate">@(review.User?.FullName ?? "Verified Reader")</h6>
+                                        <small class="text-muted d-block">@review.ReviewDate.ToString("MMM dd, yyyy")</small>
                                     </div>
                                 </div>
 
-                                <div class="text-warning">
+                                <div class="text-warning d-flex align-items-center gap-1 text-nowrap flex-shrink-0">
                                     @for (int i = 1; i <= 5; i++)
                                     {
                                         if (i <= review.Rating)
