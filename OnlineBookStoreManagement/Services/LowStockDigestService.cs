@@ -115,7 +115,7 @@ namespace OnlineBookStoreManagement.Services
             return recipients.ToList();
         }
 
-        public async Task<LowStockDigestResult> SendLowStockDigestAsync(int? customThreshold = null, CancellationToken cancellationToken = default)
+        public async Task<LowStockDigestResult> SendLowStockDigestAsync(int? customThreshold = null, bool? sendOnlyIfAlertsExist = null, CancellationToken cancellationToken = default)
         {
             var report = await GetLowStockReportAsync(customThreshold);
             var result = new LowStockDigestResult
@@ -124,6 +124,16 @@ namespace OnlineBookStoreManagement.Services
                 LowStockCount = report.LowStockCount,
                 ExecutionTime = DateTime.UtcNow
             };
+
+            bool requireAlerts = sendOnlyIfAlertsExist ?? _lowStockSettings.SendOnlyIfAlertsExist;
+
+            if (requireAlerts && report.TotalAlertCount == 0)
+            {
+                _logger.LogInformation("All catalog items exceed threshold ({Threshold} copies). 0 low-stock titles found; digest email skipped.", report.Threshold);
+                result.Success = true;
+                result.Message = $"All inventory levels healthy. No low-stock titles found (threshold \u2264 {report.Threshold}); daily digest email skipped.";
+                return result;
+            }
 
             if (!report.AdminRecipients.Any())
             {
