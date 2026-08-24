@@ -6,6 +6,7 @@
 
 @{
     int cartCount = 0;
+    int lowStockAlertCount = 0;
     ApplicationUser? user = null;
     bool isAdmin = false;
 
@@ -23,6 +24,11 @@
                       || (user.Email != null && user.Email.Contains("admin", StringComparison.OrdinalIgnoreCase))
                       || (user.UserName != null && user.UserName.Contains("admin", StringComparison.OrdinalIgnoreCase))
                       || (user.FullName != null && user.FullName.Contains("Admin", StringComparison.OrdinalIgnoreCase));
+
+            if (isAdmin)
+            {
+                lowStockAlertCount = DbContext.Books.Count(b => b.StockQuantity < 5);
+            }
         }
     }
 }
@@ -50,6 +56,10 @@
             <li class="nav-item">
                 <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["action"]?.ToString() == "LowStockDigest" ? "active" : "") text-danger" asp-controller="Admin" asp-action="LowStockDigest">
                     <i class="bi bi-bell me-1"></i> Stock Digest
+                    @if (lowStockAlertCount > 0)
+                    {
+                        <span class="badge bg-danger rounded-circle ms-1" title="@lowStockAlertCount low-stock alert(s) (&lt; 5 copies)">@lowStockAlertCount</span>
+                    }
                 </a>
             </li>
         }
@@ -79,8 +89,12 @@
                         <h6 class="dropdown-header text-accent fw-bold"><i class="bi bi-shield-lock me-1"></i> Admin Panel</h6>
                     </li>
                     <li>
-                        <a class="dropdown-item py-2 fw-semibold text-warning" asp-controller="Admin" asp-action="LowStockDigest">
-                            <i class="bi bi-bell-fill me-2"></i> Low-Stock Admin Digest
+                        <a class="dropdown-item py-2 fw-semibold text-warning d-flex justify-content-between align-items-center" asp-controller="Admin" asp-action="LowStockDigest">
+                            <span><i class="bi bi-bell-fill me-2"></i> Low-Stock Admin Digest</span>
+                            @if (lowStockAlertCount > 0)
+                            {
+                                <span class="badge bg-danger rounded-pill ms-2">@lowStockAlertCount alert(s)</span>
+                            }
                         </a>
                     </li>
                     <li>

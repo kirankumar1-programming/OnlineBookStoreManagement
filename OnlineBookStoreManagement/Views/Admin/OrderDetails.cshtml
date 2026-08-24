@@ -2,9 +2,28 @@
 @{
     ViewData["Title"] = $"Order #{Model.Id} Details";
     var statuses = new string[] { "Pending", "Processing", "Shipped", "Delivered", "Cancelled" };
+
+    var status = Model.OrderStatus ?? "Pending";
+    int currentStep = status switch
+    {
+        "Delivered" => 4,
+        "Shipped" => 3,
+        "Processing" => 2,
+        "Cancelled" => 0,
+        _ => 1
+    };
+
+    int progressPercent = currentStep switch
+    {
+        4 => 100,
+        3 => 66,
+        2 => 33,
+        0 => 0,
+        _ => 10
+    };
 }
 
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
     <div>
         <a asp-action="Orders" class="text-decoration-none text-muted mb-2 d-inline-block fw-semibold">
             <i class="bi bi-arrow-left me-1"></i> Back to Orders List
@@ -13,9 +32,71 @@
             <i class="bi bi-receipt me-2 text-accent"></i> Order Reference #@Model.Id
         </h2>
     </div>
-    <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
-        Current Status: @Model.OrderStatus
-    </span>
+    <div class="d-flex align-items-center gap-2">
+        <a asp-action="DownloadInvoice" asp-route-id="@Model.Id" class="btn btn-primary-gradient fw-bold px-3 py-2">
+            <i class="bi bi-file-earmark-pdf me-2"></i> Download PDF Invoice
+        </a>
+        <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
+            Status: @Model.OrderStatus
+        </span>
+    </div>
+</div>
+
+<!-- Order Tracking Status Timeline Bar -->
+<div class="card bg-card border-secondary shadow-lg p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-white mb-0">
+            <i class="bi bi-truck-front me-2 text-accent"></i> Live Tracking Progress
+        </h5>
+        <span class="text-muted small">Order Placed: @Model.OrderDate.ToString("dd MMM yyyy, HH:mm") UTC</span>
+    </div>
+
+    @if (status == "Cancelled")
+    {
+        <div class="alert alert-danger mb-0 border-danger">
+            <i class="bi bi-exclamation-octagon me-2"></i> Order Cancelled
+        </div>
+    }
+    else
+    {
+        <div class="position-relative my-3 px-2">
+            <!-- Progress Line -->
+            <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.1);">
+                <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: @(progressPercent)%;" aria-valuenow="@progressPercent" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+
+            <!-- Steps Icons -->
+            <div class="d-flex justify-content-between position-relative mt-n3" style="margin-top: -20px;">
+                <div class="text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center @(currentStep >= 1 ? "bg-primary text-white shadow" : "bg-dark text-muted border border-secondary")" style="width: 36px; height: 36px;">
+                        <i class="bi bi-receipt"></i>
+                    </div>
+                    <div class="mt-2 small fw-bold @(currentStep >= 1 ? "text-white" : "text-muted")">Pending</div>
+                </div>
+
+                <div class="text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center @(currentStep >= 2 ? "bg-primary text-white shadow" : "bg-dark text-muted border border-secondary")" style="width: 36px; height: 36px;">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                    <div class="mt-2 small fw-bold @(currentStep >= 2 ? "text-white" : "text-muted")">Processing</div>
+                </div>
+
+                <div class="text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center @(currentStep >= 3 ? "bg-primary text-white shadow" : "bg-dark text-muted border border-secondary")" style="width: 36px; height: 36px;">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                    <div class="mt-2 small fw-bold @(currentStep >= 3 ? "text-white" : "text-muted")">Shipped</div>
+                </div>
+
+                <div class="text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center @(currentStep >= 4 ? "bg-success text-white shadow" : "bg-dark text-muted border border-secondary")" style="width: 36px; height: 36px;">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="mt-2 small fw-bold @(currentStep >= 4 ? "text-white" : "text-muted")">Delivered</div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <div class="row g-4">
@@ -99,17 +180,17 @@
         </div>
     </div>
 
-    <!-- Right Column: Order Status Management Form -->
+    <!-- Right Column: Order Status & Tracking Management Form -->
     <div class="col-lg-4">
         <div class="card bg-card border-secondary shadow-lg sticky-top" style="top: 80px;">
             <div class="card-header border-secondary bg-dark py-3">
                 <h5 class="card-title text-white mb-0">
-                    <i class="bi bi-arrow-repeat me-2 text-warning"></i> Update Order Status
+                    <i class="bi bi-gear-fill me-2 text-warning"></i> Manage Order &amp; Tracking
                 </h5>
             </div>
             <div class="card-body">
                 <div class="alert alert-info border-info py-2 small mb-3">
-                    <i class="bi bi-envelope-paper me-1"></i> Changing order status will automatically send an SMTP transactional email notification to the customer.
+                    <i class="bi bi-envelope-paper me-1"></i> Saving status will automatically dispatch an email notification to the customer.
                 </div>
 
                 <form asp-action="UpdateOrderStatus" method="post">
@@ -125,15 +206,36 @@
                         </select>
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label class="form-label text-light fw-semibold">Payment Status</label>
                         <input type="text" name="paymentStatus" value="@Model.PaymentStatus" class="form-control bg-dark text-white border-secondary" />
                     </div>
 
-                    <button type="submit" class="btn btn-primary-gradient w-100 py-2 fw-bold">
-                        <i class="bi bi-send-check me-2"></i> Save &amp; Notify Customer
+                    <div class="mb-3">
+                        <label class="form-label text-light fw-semibold">Courier / Carrier</label>
+                        <input type="text" name="carrier" value="@Model.Carrier" placeholder="e.g., BlueDart, FedEx, DHL" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-light fw-semibold">Tracking Number</label>
+                        <input type="text" name="trackingNumber" value="@Model.TrackingNumber" placeholder="e.g., TRK123456789" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-light fw-semibold">Dispatch Date</label>
+                        <input type="date" name="shippingDate" value="@(Model.ShippingDate != default ? Model.ShippingDate.ToString("yyyy-MM-dd") : "")" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-gradient w-100 py-2.5 fw-bold mb-3">
+                        <i class="bi bi-save me-2"></i> Save &amp; Notify Customer
                     </button>
                 </form>
+
+                <hr class="border-secondary my-3" />
+
+                <a asp-action="DownloadInvoice" asp-route-id="@Model.Id" class="btn btn-outline-info w-100 fw-bold py-2">
+                    <i class="bi bi-file-earmark-pdf me-2"></i> Download Official PDF Invoice
+                </a>
             </div>
         </div>
     </div>

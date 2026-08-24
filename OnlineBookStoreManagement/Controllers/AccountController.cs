@@ -17,17 +17,20 @@ namespace OnlineBookStoreManagement.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ApplicationDbContext _db;
         private readonly IEmailSenderService _emailSender;
+        private readonly IPdfInvoiceGeneratorService _pdfGenerator;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             ApplicationDbContext db,
-            IEmailSenderService emailSender)
+            IEmailSenderService emailSender,
+            IPdfInvoiceGeneratorService pdfGenerator)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _db = db;
             _emailSender = emailSender;
+            _pdfGenerator = pdfGenerator;
         }
 
         // GET: /Account/Register
@@ -175,6 +178,27 @@ namespace OnlineBookStoreManagement.Controllers
             if (order == null) return NotFound();
 
             return View(order);
+        }
+
+        // GET: /Account/DownloadInvoice/5
+        [Authorize]
+        public async Task<IActionResult> DownloadInvoice(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isAdmin = User.IsInRole("Admin") || User.IsInRole("Administrator");
+
+            var order = await _db.OrderHeaders
+                .Include(o => o.User)
+                .Include(o => o.OrderDetails)
+                .ThenInclude(d => d.Book)
+                .FirstOrDefaultAsync(o => o.Id == id && (isAdmin || o.UserId == userId));
+
+            if (order == null) return NotFound();
+
+            byte[] pdfBytes = _pdfGenerator.GenerateInvoicePdf(order);
+            string fileName = $"Invoice_Order_{order.Id}.pdf";
+
+            return File(pdfBytes, "application/pdf", fileName);
         }
     }
 }

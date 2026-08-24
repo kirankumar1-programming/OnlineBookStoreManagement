@@ -69,9 +69,14 @@ else
                             </td>
                             <td class="text-end fw-extrabold text-accent font-monospace">₹@order.OrderTotal.ToString("N2")</td>
                             <td class="text-center">
-                                <a asp-action="OrderDetails" asp-route-id="@order.Id" class="btn btn-secondary-outline btn-sm">
-                                    View Receipt
-                                </a>
+                                <div class="d-flex justify-content-center gap-1">
+                                    <a asp-action="OrderDetails" asp-route-id="@order.Id" class="btn btn-secondary-outline btn-sm">
+                                        View Receipt
+                                    </a>
+                                    <a asp-action="DownloadInvoice" asp-route-id="@order.Id" class="btn btn-outline-primary btn-sm" title="Download PDF Invoice">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     }

@@ -103,6 +103,43 @@ namespace OnlineBookStoreManagement.Controllers
             return View(viewModel);
         }
 
+        // GET: /Home/LiveSearch?query=...
+        [HttpGet]
+        public async Task<IActionResult> LiveSearch(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 1)
+            {
+                return Json(Array.Empty<object>());
+            }
+
+            var term = query.Trim().ToLower();
+
+            var matches = await _db.Books
+                .Include(b => b.Category)
+                .Where(b => b.Title.ToLower().Contains(term) ||
+                            b.Author.ToLower().Contains(term) ||
+                            b.ISBN.ToLower().Contains(term))
+                .OrderByDescending(b => b.Title.ToLower().StartsWith(term))
+                .ThenByDescending(b => b.Author.ToLower().StartsWith(term))
+                .ThenBy(b => b.Title)
+                .Take(6)
+                .Select(b => new
+                {
+                    id = b.Id,
+                    title = b.Title,
+                    author = b.Author,
+                    isbn = b.ISBN,
+                    category = b.Category != null ? b.Category.Name : "",
+                    price = b.Price.ToString("F2"),
+                    coverImageUrl = string.IsNullOrEmpty(b.CoverImageUrl) ? "/images/default-book.svg" : b.CoverImageUrl,
+                    inStock = b.StockQuantity > 0,
+                    stockQuantity = b.StockQuantity
+                })
+                .ToListAsync();
+
+            return Json(matches);
+        }
+
         // GET: /Home/Details/5
         public async Task<IActionResult> Details(int id)
         {

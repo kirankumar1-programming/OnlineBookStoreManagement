@@ -66,7 +66,7 @@
                             ₹@item.Price.ToString("N2")
                         </td>
                         <td class="text-center" style="vertical-align: middle;">
-                            @if (item.StockQuantity > 10)
+                            @if (item.StockQuantity >= 5)
                             {
                                 <span class="badge bg-success bg-opacity-25 text-success fw-bold px-3 py-1.5 rounded-pill">
                                     <i class="bi bi-check-circle me-1"></i> @item.StockQuantity Copies
@@ -74,14 +74,14 @@
                             }
                             else if (item.StockQuantity > 0)
                             {
-                                <span class="badge bg-warning bg-opacity-25 text-warning fw-bold px-3 py-1.5 rounded-pill">
-                                    <i class="bi bi-exclamation-triangle me-1"></i> @item.StockQuantity Left
+                                <span class="badge bg-warning text-dark fw-bold px-3 py-1.5 rounded-pill border border-warning shadow-sm" title="Low-Stock Warning: Stock is below 5 units!">
+                                    <i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i> @item.StockQuantity Left (Low Stock)
                                 </span>
                             }
                             else
                             {
-                                <span class="badge bg-danger bg-opacity-25 text-danger fw-bold px-3 py-1.5 rounded-pill">
-                                    <i class="bi bi-x-circle me-1"></i> Out of Stock
+                                <span class="badge bg-danger text-white fw-bold px-3 py-1.5 rounded-pill border border-danger shadow-sm">
+                                    <i class="bi bi-x-circle-fill me-1"></i> Out of Stock
                                 </span>
                             }
                         </td>

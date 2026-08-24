@@ -19,6 +19,7 @@ namespace OnlineBookStoreManagement.Controllers
         private readonly IEmailSenderService _emailSender;
         private readonly SmtpSettings _smtpSettings;
         private readonly ILowStockDigestService _digestService;
+        private readonly IPdfInvoiceGeneratorService _pdfGenerator;
 
         public AdminController(
             UserManager<ApplicationUser> userManager,
@@ -26,7 +27,8 @@ namespace OnlineBookStoreManagement.Controllers
             ApplicationDbContext db,
             IEmailSenderService emailSender,
             IOptions<SmtpSettings> smtpSettings,
-            ILowStockDigestService digestService)
+            ILowStockDigestService digestService,
+            IPdfInvoiceGeneratorService pdfGenerator)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -34,6 +36,7 @@ namespace OnlineBookStoreManagement.Controllers
             _emailSender = emailSender;
             _smtpSettings = smtpSettings.Value;
             _digestService = digestService;
+            _pdfGenerator = pdfGenerator;
         }
 
         private async Task<bool> CheckAdminAccessAsync()
@@ -141,7 +144,7 @@ namespace OnlineBookStoreManagement.Controllers
         // POST: /Admin/UpdateOrderStatus
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> UpdateOrderStatus(int orderId, string orderStatus, string? paymentStatus)
+        public async Task<IActionResult> UpdateOrderStatus(int orderId, string orderStatus, string? paymentStatus, string? carrier, string? trackingNumber, DateTime? shippingDate)
         {
             if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
 
@@ -157,6 +160,25 @@ namespace OnlineBookStoreManagement.Controllers
             if (!string.IsNullOrWhiteSpace(paymentStatus))
             {
                 order.PaymentStatus = paymentStatus;
+            }
+
+            if (!string.IsNullOrWhiteSpace(carrier))
+            {
+                order.Carrier = carrier;
+            }
+
+            if (!string.IsNullOrWhiteSpace(trackingNumber))
+            {
+                order.TrackingNumber = trackingNumber;
+            }
+
+            if (shippingDate.HasValue)
+            {
+                order.ShippingDate = shippingDate.Value;
+            }
+            else if (orderStatus == "Shipped" && order.ShippingDate == default)
+            {
+                order.ShippingDate = DateTime.UtcNow;
             }
 
             await _db.SaveChangesAsync();
@@ -180,6 +202,25 @@ namespace OnlineBookStoreManagement.Controllers
             }
 
             return RedirectToAction(nameof(OrderDetails), new { id = orderId });
+        }
+
+        // GET: /Admin/DownloadInvoice/5
+        public async Task<IActionResult> DownloadInvoice(int id)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            var order = await _db.OrderHeaders
+                .Include(o => o.User)
+                .Include(o => o.OrderDetails)
+                .ThenInclude(d => d.Book)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null) return NotFound();
+
+            byte[] pdfBytes = _pdfGenerator.GenerateInvoicePdf(order);
+            string fileName = $"Invoice_Order_{order.Id}.pdf";
+
+            return File(pdfBytes, "application/pdf", fileName);
         }
 
         // GET: /Admin/SmtpSettings

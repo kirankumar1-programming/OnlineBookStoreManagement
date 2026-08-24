@@ -111,8 +111,11 @@
 
             <!-- Action Buttons -->
             <div class="d-grid gap-2">
+                <a asp-controller="Account" asp-action="DownloadInvoice" asp-route-id="@Model.Id" class="btn btn-primary-gradient py-2 fw-bold">
+                    <i class="bi bi-file-earmark-pdf me-2"></i> Download Official PDF Invoice
+                </a>
                 <button type="button" onclick="window.print()" class="btn btn-secondary-outline py-2 fw-semibold">
-                    <i class="bi bi-printer me-2"></i> Print / Download Invoice
+                    <i class="bi bi-printer me-2"></i> Print Invoice
                 </button>
                 <a asp-controller="Account" asp-action="Orders" class="btn btn-primary-gradient py-2.5 fw-bold">
                     <i class="bi bi-box-seam me-2"></i> View My Orders

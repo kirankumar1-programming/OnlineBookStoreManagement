@@ -1,0 +1,92 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using OnlineBookStoreManagement.Models
+@using OnlineBookStoreManagement.Data
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject ApplicationDbContext DbContext
+
+@{
+    bool isAdmin = false;
+    List<Book> lowStockBooks = new();
+
+    if (SignInManager.IsSignedIn(User))
+    {
+        var user = await UserManager.GetUserAsync(User);
+        if (user != null)
+        {
+            isAdmin = User.IsInRole("Admin")
+                      || await UserManager.IsInRoleAsync(user, "Admin")
+                      || (user.Email != null && user.Email.Contains("admin", StringComparison.OrdinalIgnoreCase))
+                      || (user.UserName != null && user.UserName.Contains("admin", StringComparison.OrdinalIgnoreCase))
+                      || (user.FullName != null && user.FullName.Contains("Admin", StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    if (isAdmin)
+    {
+        lowStockBooks = await DbContext.Books
+            .Include(b => b.Category)
+            .Where(b => b.StockQuantity < 5)
+            .OrderBy(b => b.StockQuantity)
+            .ToListAsync();
+    }
+}
+
+@if (isAdmin && lowStockBooks.Any())
+{
+    var outOfStockCount = lowStockBooks.Count(b => b.StockQuantity == 0);
+    var lowStockCount = lowStockBooks.Count(b => b.StockQuantity > 0);
+
+    <div class="alert alert-warning border-warning shadow-lg mb-4 text-white" style="background: rgba(245, 158, 11, 0.15); backdrop-filter: blur(10px); border-left: 5px solid #f59e0b;" role="alert">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div class="d-flex align-items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill fs-3 text-warning flex-shrink-0 mt-1"></i>
+                <div>
+                    <h6 class="alert-heading fw-bold mb-1 text-warning">
+                        <i class="bi bi-bell-fill me-1"></i> Low-Stock Inventory Alert (&lt; 5 Units)
+                    </h6>
+                    <p class="mb-1 text-light small">
+                        Automated Warning: <strong>@lowStockBooks.Count title(s)</strong> have dropped below 5 units!
+                        @if (outOfStockCount > 0)
+                        {
+                            <span class="badge bg-danger text-white ms-1">@outOfStockCount Out of Stock</span>
+                        }
+                        @if (lowStockCount > 0)
+                        {
+                            <span class="badge bg-warning text-dark ms-1">@lowStockCount &lt; 5 Copies</span>
+                        }
+                    </p>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        @foreach (var book in lowStockBooks.Take(5))
+                        {
+                            <span class="badge bg-dark border border-secondary text-light fw-normal py-1 px-2">
+                                <strong>@book.Title</strong>:
+                                @if (book.StockQuantity == 0)
+                                {
+                                    <span class="text-danger fw-bold">0 left</span>
+                                }
+                                else
+                                {
+                                    <span class="text-warning fw-bold">@book.StockQuantity left</span>
+                                }
+                            </span>
+                        }
+                        @if (lowStockBooks.Count > 5)
+                        {
+                            <span class="badge bg-secondary py-1 px-2">+@(lowStockBooks.Count - 5) more</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-shrink-0 align-self-start align-self-md-center">
+                <a asp-controller="Admin" asp-action="LowStockDigest" class="btn btn-sm btn-warning fw-bold text-dark shadow-sm">
+                    <i class="bi bi-bell me-1"></i> Stock Digest
+                </a>
+                <a asp-controller="Books" asp-action="Index" class="btn btn-sm btn-outline-light fw-semibold">
+                    <i class="bi bi-box-seam me-1"></i> Restock Now
+                </a>
+            </div>
+        </div>
+    </div>
+}

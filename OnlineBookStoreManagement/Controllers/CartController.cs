@@ -15,12 +15,14 @@ namespace OnlineBookStoreManagement.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSenderService _emailSender;
+        private readonly ILogger<CartController> _logger;
 
-        public CartController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IEmailSenderService emailSender)
+        public CartController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IEmailSenderService emailSender, ILogger<CartController> logger)
         {
             _db = db;
             _userManager = userManager;
             _emailSender = emailSender;
+            _logger = logger;
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -257,6 +259,12 @@ namespace OnlineBookStoreManagement.Controllers
                 {
                     item.Book.StockQuantity -= item.Count;
                     if (item.Book.StockQuantity < 0) item.Book.StockQuantity = 0;
+
+                    if (item.Book.StockQuantity < 5)
+                    {
+                        _logger.LogWarning("LOW-STOCK ALERT: Book '{Title}' (ID: {BookId}) stock dropped to {StockQuantity} units (< 5 units) after Order #{OrderId}.",
+                            item.Book.Title, item.Book.Id, item.Book.StockQuantity, orderHeader.Id);
+                    }
                 }
             }
 

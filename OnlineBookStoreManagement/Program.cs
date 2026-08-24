@@ -21,6 +21,9 @@ builder.Services.Configure<LowStockSettings>(builder.Configuration.GetSection("L
 builder.Services.AddScoped<ILowStockDigestService, LowStockDigestService>();
 builder.Services.AddHostedService<LowStockDigestBackgroundService>();
 
+// Configure PDF Invoice Generator Service
+builder.Services.AddScoped<IPdfInvoiceGeneratorService, PdfInvoiceGeneratorService>();
+
 // 1. Add DbContext (SQL Server or SQLite)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
