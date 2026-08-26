@@ -59,7 +59,133 @@ namespace OnlineBookStoreManagement.Controllers
         public async Task<IActionResult> Index()
         {
             if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
-            return RedirectToAction(nameof(Orders));
+            return RedirectToAction(nameof(Analytics));
+        }
+
+        // GET: /Admin/Analytics
+        public async Task<IActionResult> Analytics()
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            var viewModel = await BuildAnalyticsDashboardViewModelAsync();
+            return View(viewModel);
+        }
+
+        // GET: /Admin/GetAnalyticsApiData
+        [HttpGet]
+        public async Task<IActionResult> GetAnalyticsApiData()
+        {
+            if (!await CheckAdminAccessAsync()) return Unauthorized();
+
+            var viewModel = await BuildAnalyticsDashboardViewModelAsync();
+            return Json(viewModel);
+        }
+
+        private async Task<AnalyticsDashboardViewModel> BuildAnalyticsDashboardViewModelAsync()
+        {
+            var vm = new AnalyticsDashboardViewModel();
+
+            // 1. Overall Summary Stats
+            vm.TotalRevenue = await _db.OrderHeaders.SumAsync(o => (decimal?)o.OrderTotal) ?? 0m;
+            vm.TotalOrders = await _db.OrderHeaders.CountAsync();
+            vm.TotalBooksSold = await _db.OrderDetails.SumAsync(d => (int?)d.Count) ?? 0;
+
+            // 2. Chart 1: Monthly Revenue (Last 6 Months up to current date)
+            var orders = await _db.OrderHeaders
+                .OrderBy(o => o.OrderDate)
+                .ToListAsync();
+
+            var monthlyGrouped = orders
+                .GroupBy(o => new { o.OrderDate.Year, o.OrderDate.Month })
+                .Select(g => new
+                {
+                    Date = new DateTime(g.Key.Year, g.Key.Month, 1),
+                    MonthLabel = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy"),
+                    Revenue = g.Sum(o => o.OrderTotal),
+                    Count = g.Count()
+                })
+                .OrderBy(x => x.Date)
+                .ToList();
+
+            if (!monthlyGrouped.Any())
+            {
+                var currentDate = DateTime.UtcNow;
+                for (int i = 5; i >= 0; i--)
+                {
+                    var dt = currentDate.AddMonths(-i);
+                    vm.MonthlyRevenue.Labels.Add(dt.ToString("MMM yyyy"));
+                    vm.MonthlyRevenue.Revenue.Add(0m);
+                    vm.MonthlyRevenue.OrderCounts.Add(0);
+                }
+            }
+            else
+            {
+                foreach (var item in monthlyGrouped)
+                {
+                    vm.MonthlyRevenue.Labels.Add(item.MonthLabel);
+                    vm.MonthlyRevenue.Revenue.Add(item.Revenue);
+                    vm.MonthlyRevenue.OrderCounts.Add(item.Count);
+                }
+            }
+
+            // 3. Chart 2: Top 5 Best Selling Books
+            var orderDetails = await _db.OrderDetails
+                .Include(d => d.Book)
+                .ThenInclude(b => b!.Category)
+                .ToListAsync();
+
+            var topBooks = orderDetails
+                .Where(d => d.Book != null)
+                .GroupBy(d => d.Book!.Title)
+                .Select(g => new
+                {
+                    Title = g.Key,
+                    QuantitySold = g.Sum(d => d.Count),
+                    TotalRevenue = g.Sum(d => d.Count * d.Price)
+                })
+                .OrderByDescending(b => b.QuantitySold)
+                .ThenByDescending(b => b.TotalRevenue)
+                .Take(5)
+                .ToList();
+
+            foreach (var book in topBooks)
+            {
+                vm.TopSellingBooks.Labels.Add(book.Title);
+                vm.TopSellingBooks.QuantitiesSold.Add(book.QuantitySold);
+                vm.TopSellingBooks.TotalRevenues.Add(book.TotalRevenue);
+            }
+
+            // 4. Chart 3: Category Revenue Breakdown
+            var categoryGrouped = orderDetails
+                .Where(d => d.Book != null && d.Book.Category != null)
+                .GroupBy(d => d.Book!.Category!.Name)
+                .Select(g => new
+                {
+                    CategoryName = g.Key,
+                    Revenue = g.Sum(d => d.Count * d.Price)
+                })
+                .OrderByDescending(c => c.Revenue)
+                .ToList();
+
+            decimal grandCategoryRevenue = categoryGrouped.Sum(c => c.Revenue);
+
+            foreach (var cat in categoryGrouped)
+            {
+                vm.CategoryRevenue.Labels.Add(cat.CategoryName);
+                vm.CategoryRevenue.Revenues.Add(cat.Revenue);
+
+                double pct = grandCategoryRevenue > 0
+                    ? Math.Round((double)(cat.Revenue / grandCategoryRevenue * 100), 1)
+                    : 0;
+                vm.CategoryRevenue.Percentages.Add(pct);
+            }
+
+            if (categoryGrouped.Any())
+            {
+                vm.TopCategoryName = categoryGrouped.First().CategoryName;
+            }
+
+            return vm;
         }
 
         // GET: /Admin/Users

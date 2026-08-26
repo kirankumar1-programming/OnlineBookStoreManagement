@@ -1,0 +1,368 @@
+@model OnlineBookStoreManagement.Models.ViewModels.AnalyticsDashboardViewModel
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Visual Analytics Dashboard";
+}
+
+<div class="container-fluid max-w-7xl mx-auto px-0 px-lg-3 py-2">
+    <!-- Header Banner -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom border-secondary gap-3">
+        <div>
+            <h2 class="display-6 fw-bold mb-1 text-light d-flex align-items-center gap-2">
+                <i class="bi bi-graph-up-arrow text-primary"></i> Store Analytics & Performance
+            </h2>
+            <p class="text-muted mb-0 fs-6">Comprehensive sales metrics, revenue breakdown, and top-selling inventory trends.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-secondary-outline btn-sm d-flex align-items-center gap-1" onclick="window.location.reload();">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Data
+            </button>
+            <a asp-controller="Admin" asp-action="Orders" class="btn btn-primary-gradient btn-sm d-flex align-items-center gap-1">
+                <i class="bi bi-box-seam"></i> Manage Orders
+            </a>
+        </div>
+    </div>
+
+    <!-- Executive KPI Summary Cards -->
+    <div class="row g-3 mb-4">
+        <!-- KPI 1: Total Revenue -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card stat-success shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted fw-bold text-uppercase fs-7 letter-spacing-1">Total Sales Revenue</span>
+                        <div class="stat-value text-success mt-1">₹@Model.TotalRevenue.ToString("N2")</div>
+                    </div>
+                    <div class="rounded-circle p-3 bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-currency-rupee fs-3"></i>
+                    </div>
+                </div>
+                <div class="mt-3 small text-muted d-flex align-items-center gap-1">
+                    <i class="bi bi-shield-check text-success"></i> Cumulative order sales total
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 2: Total Orders -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card stat-accent shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted fw-bold text-uppercase fs-7 letter-spacing-1">Total Orders</span>
+                        <div class="stat-value text-accent mt-1">@Model.TotalOrders</div>
+                    </div>
+                    <div class="rounded-circle p-3 bg-info bg-opacity-10 text-accent">
+                        <i class="bi bi-bag-check-fill fs-3"></i>
+                    </div>
+                </div>
+                <div class="mt-3 small text-muted d-flex align-items-center gap-1">
+                    <i class="bi bi-graph-up text-accent"></i> Customer purchase volume
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 3: Books Sold -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card shadow-sm h-100" style="border-right-color: var(--primary);">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted fw-bold text-uppercase fs-7 letter-spacing-1">Books Sold</span>
+                        <div class="stat-value text-primary mt-1">@Model.TotalBooksSold</div>
+                    </div>
+                    <div class="rounded-circle p-3 bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-book-half fs-3"></i>
+                    </div>
+                </div>
+                <div class="mt-3 small text-muted d-flex align-items-center gap-1">
+                    <i class="bi bi-cart-check text-primary"></i> Total physical copies sold
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 4: Top Category -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card stat-warning shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted fw-bold text-uppercase fs-7 letter-spacing-1">Top Category</span>
+                        <div class="stat-value text-warning mt-1 fs-3 text-truncate" style="max-width: 180px;" title="@Model.TopCategoryName">
+                            @Model.TopCategoryName
+                        </div>
+                    </div>
+                    <div class="rounded-circle p-3 bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-trophy-fill fs-3"></i>
+                    </div>
+                </div>
+                <div class="mt-3 small text-muted d-flex align-items-center gap-1">
+                    <i class="bi bi-pie-chart-fill text-warning"></i> Highest revenue contributor
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1: Monthly Revenue & Category Breakdown -->
+    <div class="row g-4 mb-4">
+        <!-- Monthly Revenue Chart (8 cols) -->
+        <div class="col-12 col-lg-8">
+            <div class="card border-secondary shadow-lg h-100">
+                <div class="card-header bg-transparent border-secondary py-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-calendar3-range text-primary fs-5"></i>
+                        <h5 class="card-title mb-0 text-light fw-bold">Monthly Revenue Trend</h5>
+                    </div>
+                    <span class="badge bg-primary bg-opacity-20 text-primary border border-primary px-3 py-1 rounded-pill">
+                        Sales Growth Over Time
+                    </span>
+                </div>
+                <div class="card-body position-relative p-3" style="min-height: 320px;">
+                    <canvas id="monthlyRevenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Breakdown Chart (4 cols) -->
+        <div class="col-12 col-lg-4">
+            <div class="card border-secondary shadow-lg h-100">
+                <div class="card-header bg-transparent border-secondary py-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-pie-chart-fill text-accent fs-5"></i>
+                        <h5 class="card-title mb-0 text-light fw-bold">Category Revenue Share</h5>
+                    </div>
+                    <span class="badge bg-info bg-opacity-20 text-accent border border-info px-2 py-1 rounded-pill">
+                        Breakdown
+                    </span>
+                </div>
+                <div class="card-body position-relative p-3 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                    <canvas id="categoryRevenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2: Top 5 Best Selling Books -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-secondary shadow-lg">
+                <div class="card-header bg-transparent border-secondary py-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-bar-chart-line-fill text-warning fs-5"></i>
+                        <h5 class="card-title mb-0 text-light fw-bold">Top 5 Best Selling Books</h5>
+                    </div>
+                    <span class="badge bg-warning bg-opacity-20 text-warning border border-warning px-3 py-1 rounded-pill">
+                        Units Sold Leaderboard
+                    </span>
+                </div>
+                <div class="card-body position-relative p-3" style="min-height: 300px;">
+                    <canvas id="topSellingBooksChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Include Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Chart.js Global Dark Theme Styling Setup
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+            Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15, 23, 42, 0.95)';
+            Chart.defaults.plugins.tooltip.titleColor = '#f8fafc';
+            Chart.defaults.plugins.tooltip.bodyColor = '#38bdf8';
+            Chart.defaults.plugins.tooltip.borderColor = '#334155';
+            Chart.defaults.plugins.tooltip.borderWidth = 1;
+            Chart.defaults.plugins.tooltip.padding = 12;
+            Chart.defaults.plugins.tooltip.cornerRadius = 8;
+
+            // Model JSON Data
+            const monthlyRevenueData = @Html.Raw(JsonSerializer.Serialize(Model.MonthlyRevenue));
+            const topBooksData = @Html.Raw(JsonSerializer.Serialize(Model.TopSellingBooks));
+            const categoryData = @Html.Raw(JsonSerializer.Serialize(Model.CategoryRevenue));
+
+            // -------------------------------------------------------------
+            // CHART 1: Monthly Revenue (Line / Area Chart)
+            // -------------------------------------------------------------
+            const ctxMonthly = document.getElementById('monthlyRevenueChart').getContext('2d');
+            
+            // Create Gradient Background
+            const gradientMonthly = ctxMonthly.createLinearGradient(0, 0, 0, 300);
+            gradientMonthly.addColorStop(0, 'rgba(99, 102, 241, 0.45)');
+            gradientMonthly.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+            new Chart(ctxMonthly, {
+                type: 'line',
+                data: {
+                    labels: monthlyRevenueData.Labels,
+                    datasets: [{
+                        label: 'Monthly Revenue (₹)',
+                        data: monthlyRevenueData.Revenue,
+                        borderColor: '#6366f1',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#818cf8',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        fill: true,
+                        backgroundColor: gradientMonthly,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.parsed.y || 0;
+                                    const index = context.dataIndex;
+                                    const count = monthlyRevenueData.OrderCounts[index] || 0;
+                                    return [
+                                        ` Revenue: ₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+                                        ` Total Orders: ${count}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(51, 65, 85, 0.4)' },
+                            ticks: { color: '#cbd5e1', font: { weight: '600' } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(51, 65, 85, 0.4)' },
+                            ticks: {
+                                color: '#cbd5e1',
+                                callback: function (value) {
+                                    return '₹' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // -------------------------------------------------------------
+            // CHART 2: Top 5 Best Selling Books (Horizontal Bar Chart)
+            // -------------------------------------------------------------
+            const ctxTopBooks = document.getElementById('topSellingBooksChart').getContext('2d');
+            
+            // Create Bar Gradient Colors
+            const barGradients = topBooksData.Labels.map((_, idx) => {
+                const colors = [
+                    '#6366f1', '#38bdf8', '#10b981', '#fbbf24', '#ec4899'
+                ];
+                return colors[idx % colors.length];
+            });
+
+            new Chart(ctxTopBooks, {
+                type: 'bar',
+                data: {
+                    labels: topBooksData.Labels,
+                    datasets: [{
+                        label: 'Units Sold',
+                        data: topBooksData.QuantitiesSold,
+                        backgroundColor: barGradients,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        barThickness: 28
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const qty = context.parsed.x || 0;
+                                    const idx = context.dataIndex;
+                                    const revenue = topBooksData.TotalRevenues[idx] || 0;
+                                    return [
+                                        ` Units Sold: ${qty} copies`,
+                                        ` Total Sales: ₹${revenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(51, 65, 85, 0.4)' },
+                            ticks: { color: '#cbd5e1', precision: 0 }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#f8fafc',
+                                font: { weight: '600', size: 12 },
+                                callback: function (value, index) {
+                                    const label = topBooksData.Labels[index] || '';
+                                    return label.length > 25 ? label.substring(0, 22) + '...' : label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // -------------------------------------------------------------
+            // CHART 3: Category Revenue Breakdown (Doughnut Chart)
+            // -------------------------------------------------------------
+            const ctxCategory = document.getElementById('categoryRevenueChart').getContext('2d');
+            const categoryColors = [
+                '#6366f1', '#38bdf8', '#10b981', '#fbbf24', '#ec4899', '#a855f7', '#f97316'
+            ];
+
+            new Chart(ctxCategory, {
+                type: 'doughnut',
+                data: {
+                    labels: categoryData.Labels,
+                    datasets: [{
+                        data: categoryData.Revenues,
+                        backgroundColor: categoryColors.slice(0, categoryData.Labels.length),
+                        borderColor: '#1e293b',
+                        borderWidth: 3,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#f8fafc',
+                                font: { size: 11, weight: '600' },
+                                padding: 14,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.parsed || 0;
+                                    const idx = context.dataIndex;
+                                    const pct = categoryData.Percentages[idx] || 0;
+                                    return ` Revenue: ₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+}

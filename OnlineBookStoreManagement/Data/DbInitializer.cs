@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Data;
@@ -236,6 +236,92 @@ namespace OnlineBookStoreManagement.Data
                     if (reviews.Any())
                     {
                         await context.BookReviews.AddRangeAsync(reviews);
+                        await context.SaveChangesAsync();
+                    }
+                }
+            }
+
+            // 7. Seed Sample Orders for Historical Visual Analytics
+            if (!await context.OrderHeaders.AnyAsync())
+            {
+                var sampleCustomer = await userManager.FindByEmailAsync("customer@bookstore.com");
+                var books = await context.Books.Include(b => b.Category).ToListAsync();
+
+                if (sampleCustomer != null && books.Any())
+                {
+                    var cleanArch = books.FirstOrDefault(b => b.Title.Contains("Clean Architecture")) ?? books[0];
+                    var dataIntensive = books.FirstOrDefault(b => b.Title.Contains("Designing Data-Intensive")) ?? books[0];
+                    var dune = books.FirstOrDefault(b => b.Title.Contains("Dune")) ?? books[0];
+                    var gatsby = books.FirstOrDefault(b => b.Title.Contains("Great Gatsby")) ?? books[0];
+                    var atomic = books.FirstOrDefault(b => b.Title.Contains("Atomic Habits")) ?? books[0];
+                    var astro = books.FirstOrDefault(b => b.Title.Contains("Astrophysics")) ?? books[0];
+                    var pragmatic = books.FirstOrDefault(b => b.Title.Contains("Pragmatic Programmer")) ?? books[0];
+                    var zeroToOne = books.FirstOrDefault(b => b.Title.Contains("Zero to One")) ?? books[0];
+
+                    var now = DateTime.UtcNow;
+
+                    var sampleOrders = new List<(DateTime date, string status, List<(Book book, int count)> items)>
+                    {
+                        // 5 Months Ago
+                        (now.AddMonths(-5), "Approved", new() { (atomic, 3), (gatsby, 2), (astro, 1) }),
+                        (now.AddMonths(-5).AddDays(5), "Approved", new() { (dune, 4), (cleanArch, 2) }),
+
+                        // 4 Months Ago
+                        (now.AddMonths(-4), "Approved", new() { (dataIntensive, 2), (pragmatic, 3), (atomic, 4) }),
+                        (now.AddMonths(-4).AddDays(8), "Approved", new() { (zeroToOne, 5), (gatsby, 3) }),
+
+                        // 3 Months Ago
+                        (now.AddMonths(-3), "Approved", new() { (cleanArch, 4), (dune, 5), (atomic, 6) }),
+                        (now.AddMonths(-3).AddDays(12), "Approved", new() { (dataIntensive, 3), (astro, 4) }),
+
+                        // 2 Months Ago
+                        (now.AddMonths(-2), "Approved", new() { (pragmatic, 5), (atomic, 8), (gatsby, 4) }),
+                        (now.AddMonths(-2).AddDays(10), "Approved", new() { (cleanArch, 6), (zeroToOne, 4) }),
+
+                        // 1 Month Ago
+                        (now.AddMonths(-1), "Approved", new() { (dune, 7), (dataIntensive, 4), (atomic, 10) }),
+                        (now.AddMonths(-1).AddDays(15), "Approved", new() { (pragmatic, 6), (cleanArch, 5), (astro, 3) }),
+
+                        // Current Month
+                        (now.AddDays(-10), "Approved", new() { (atomic, 12), (cleanArch, 7), (zeroToOne, 6) }),
+                        (now.AddDays(-2), "Approved", new() { (dataIntensive, 5), (dune, 8), (pragmatic, 4) })
+                    };
+
+                    foreach (var (orderDate, status, items) in sampleOrders)
+                    {
+                        decimal total = items.Sum(i => i.book.Price * i.count);
+
+                        var header = new OrderHeader
+                        {
+                            UserId = sampleCustomer.Id,
+                            OrderDate = orderDate,
+                            ShippingDate = orderDate.AddDays(2),
+                            OrderTotal = total,
+                            OrderStatus = status,
+                            PaymentStatus = "Approved",
+                            TrackingNumber = $"TRK-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}",
+                            Carrier = "FedEx Express",
+                            Name = sampleCustomer.FullName ?? "Rohan Sharma",
+                            PhoneNumber = "9876543210",
+                            StreetAddress = "45 Park Street",
+                            City = "Mumbai",
+                            PostalCode = "400001"
+                        };
+
+                        context.OrderHeaders.Add(header);
+                        await context.SaveChangesAsync();
+
+                        foreach (var (book, count) in items)
+                        {
+                            var detail = new OrderDetail
+                            {
+                                OrderHeaderId = header.Id,
+                                BookId = book.Id,
+                                Count = count,
+                                Price = book.Price
+                            };
+                            context.OrderDetails.Add(detail);
+                        }
                         await context.SaveChangesAsync();
                     }
                 }
