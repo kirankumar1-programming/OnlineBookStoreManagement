@@ -68,10 +68,12 @@ a:hover {
 header.sticky-top {
     position: sticky;
     top: 0;
-    z-index: 1000;
+    z-index: 1030;
 }
 
 .navbar-custom {
+    position: relative;
+    z-index: 1020;
     background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border-color);
@@ -79,6 +81,8 @@ header.sticky-top {
 }
 
 .search-bar-row {
+    position: relative;
+    z-index: 1010;
     background: rgba(11, 17, 32, 0.95);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border-color);
@@ -403,6 +407,10 @@ select option {
 }
 
 /* Dropdown Menus */
+.dropdown-menu {
+    z-index: 1050 !important;
+}
+
 .dropdown-menu-dark {
     background-color: #1e293b !important;
     border-color: #475569 !important;
