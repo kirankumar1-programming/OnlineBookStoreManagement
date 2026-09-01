@@ -12,6 +12,8 @@ namespace OnlineBookStoreManagement.Controllers
 {
     public class CartController : Controller
     {
+        private const string SessionCouponKey = "AppliedCouponCode";
+
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSenderService _emailSender;
@@ -26,6 +28,75 @@ namespace OnlineBookStoreManagement.Controllers
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        private decimal CalculateCouponDiscount(Coupon coupon, decimal subtotal)
+        {
+            if (!coupon.IsActive || subtotal < coupon.MinimumOrderAmount)
+                return 0m;
+
+            if (coupon.ExpiryDate.HasValue && coupon.ExpiryDate.Value < DateTime.UtcNow)
+                return 0m;
+
+            decimal discount = 0m;
+            if (coupon.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+            {
+                discount = Math.Round((subtotal * coupon.DiscountValue) / 100m, 2);
+                if (coupon.MaximumDiscountAmount.HasValue && discount > coupon.MaximumDiscountAmount.Value)
+                {
+                    discount = coupon.MaximumDiscountAmount.Value;
+                }
+            }
+            else if (coupon.DiscountType.Equals("Flat", StringComparison.OrdinalIgnoreCase))
+            {
+                discount = Math.Min(subtotal, coupon.DiscountValue);
+            }
+
+            return discount;
+        }
+
+        private async Task<(string? code, decimal discount, string? infoMessage)> ProcessSessionCouponAsync(decimal subtotal)
+        {
+            var code = HttpContext.Session.GetString(SessionCouponKey);
+            if (string.IsNullOrWhiteSpace(code)) return (null, 0m, null);
+
+            var coupon = await _db.Coupons.FirstOrDefaultAsync(c => c.Code.ToUpper() == code.ToUpper() && c.IsActive);
+            if (coupon == null)
+            {
+                HttpContext.Session.Remove(SessionCouponKey);
+                return (null, 0m, "Previously applied coupon is no longer active.");
+            }
+
+            if (coupon.ExpiryDate.HasValue && coupon.ExpiryDate.Value < DateTime.UtcNow)
+            {
+                HttpContext.Session.Remove(SessionCouponKey);
+                return (null, 0m, $"Coupon '{coupon.Code}' has expired.");
+            }
+
+            if (subtotal < coupon.MinimumOrderAmount)
+            {
+                return (coupon.Code, 0m, $"Coupon '{coupon.Code}' requires a minimum subtotal of ₹{coupon.MinimumOrderAmount:N2}.");
+            }
+
+            decimal discount = CalculateCouponDiscount(coupon, subtotal);
+            return (coupon.Code, discount, $"Coupon '{coupon.Code}' applied successfully!");
+        }
+
+        private List<string> ValidateCartStock(IEnumerable<ShoppingCartItem> cartItems)
+        {
+            var errors = new List<string>();
+            foreach (var item in cartItems)
+            {
+                if (item.Book == null || item.Book.StockQuantity <= 0)
+                {
+                    errors.Add($"\"{item.Book?.Title ?? "Book"}\" is currently out of stock!");
+                }
+                else if (item.Count > item.Book.StockQuantity)
+                {
+                    errors.Add($"Only {item.Book.StockQuantity} copy(ies) of \"{item.Book.Title}\" in stock, but you requested {item.Count}.");
+                }
+            }
+            return errors;
+        }
 
         // GET: /Cart
         public async Task<IActionResult> Index()
@@ -44,8 +115,18 @@ namespace OnlineBookStoreManagement.Controllers
 
             var viewModel = new ShoppingCartViewModel
             {
-                CartItems = cartItems
+                CartItems = cartItems,
+                StockValidationErrors = ValidateCartStock(cartItems)
             };
+
+            var (appliedCode, discountAmount, couponInfo) = await ProcessSessionCouponAsync(viewModel.SubTotal);
+            viewModel.CouponCode = appliedCode;
+            viewModel.DiscountAmount = discountAmount;
+            if (!string.IsNullOrEmpty(couponInfo))
+            {
+                if (discountAmount > 0) viewModel.CouponSuccessMessage = couponInfo;
+                else viewModel.CouponErrorMessage = couponInfo;
+            }
 
             return View(viewModel);
         }
@@ -62,8 +143,16 @@ namespace OnlineBookStoreManagement.Controllers
                 return RedirectToAction("Login", "Account", new { returnUrl = $"/Home/Details/{bookId}" });
             }
 
+            if (quantity <= 0) quantity = 1;
+
             var book = await _db.Books.FindAsync(bookId);
             if (book == null) return NotFound();
+
+            if (book.StockQuantity <= 0)
+            {
+                TempData["ErrorMessage"] = $"Sorry, \"{book.Title}\" is currently out of stock!";
+                return RedirectToAction("Details", "Home", new { id = bookId });
+            }
 
             if (book.StockQuantity < quantity)
             {
@@ -96,6 +185,44 @@ namespace OnlineBookStoreManagement.Controllers
 
             await _db.SaveChangesAsync();
             TempData["SuccessMessage"] = $"\"{book.Title}\" added to your cart!";
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // POST: /Cart/UpdateQuantity
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateQuantity(int cartId, int quantity)
+        {
+            var userId = GetUserId();
+            if (string.IsNullOrEmpty(userId))
+            {
+                return RedirectToAction("Login", "Account", new { returnUrl = "/Cart" });
+            }
+
+            var cartItem = await _db.ShoppingCartItems
+                .Include(c => c.Book)
+                .FirstOrDefaultAsync(c => c.Id == cartId && c.UserId == userId);
+
+            if (cartItem != null && cartItem.Book != null)
+            {
+                if (quantity <= 0)
+                {
+                    _db.ShoppingCartItems.Remove(cartItem);
+                    TempData["SuccessMessage"] = $"\"{cartItem.Book.Title}\" removed from cart.";
+                }
+                else if (quantity > cartItem.Book.StockQuantity)
+                {
+                    cartItem.Count = cartItem.Book.StockQuantity;
+                    TempData["ErrorMessage"] = $"Quantity for \"{cartItem.Book.Title}\" set to max available stock ({cartItem.Book.StockQuantity} unit(s)).";
+                }
+                else
+                {
+                    cartItem.Count = quantity;
+                    TempData["SuccessMessage"] = $"Updated quantity for \"{cartItem.Book.Title}\" to {quantity}.";
+                }
+                await _db.SaveChangesAsync();
+            }
 
             return RedirectToAction(nameof(Index));
         }
@@ -160,6 +287,68 @@ namespace OnlineBookStoreManagement.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // POST: /Cart/ApplyCoupon
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApplyCoupon(string couponCode)
+        {
+            var userId = GetUserId();
+            if (string.IsNullOrEmpty(userId))
+            {
+                return RedirectToAction("Login", "Account", new { returnUrl = "/Cart" });
+            }
+
+            if (string.IsNullOrWhiteSpace(couponCode))
+            {
+                TempData["ErrorMessage"] = "Please enter a valid coupon code.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            couponCode = couponCode.Trim().ToUpper();
+            var coupon = await _db.Coupons.FirstOrDefaultAsync(c => c.Code.ToUpper() == couponCode);
+
+            if (coupon == null || !coupon.IsActive)
+            {
+                TempData["ErrorMessage"] = $"Invalid or inactive coupon code '{couponCode}'.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (coupon.ExpiryDate.HasValue && coupon.ExpiryDate.Value < DateTime.UtcNow)
+            {
+                TempData["ErrorMessage"] = $"Coupon code '{couponCode}' has expired.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var cartItems = await _db.ShoppingCartItems
+                .Include(i => i.Book)
+                .Where(i => i.UserId == userId)
+                .ToListAsync();
+
+            decimal subtotal = cartItems.Sum(i => (i.Book != null ? i.Book.Price : 0m) * i.Count);
+
+            if (subtotal < coupon.MinimumOrderAmount)
+            {
+                TempData["ErrorMessage"] = $"Coupon '{coupon.Code}' requires a minimum subtotal of ₹{coupon.MinimumOrderAmount:N2}.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            HttpContext.Session.SetString(SessionCouponKey, coupon.Code);
+            decimal discount = CalculateCouponDiscount(coupon, subtotal);
+            TempData["SuccessMessage"] = $"Coupon '{coupon.Code}' applied! You saved ₹{discount:N2}.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // POST: /Cart/RemoveCoupon
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveCoupon()
+        {
+            HttpContext.Session.Remove(SessionCouponKey);
+            TempData["SuccessMessage"] = "Coupon removed.";
+            return RedirectToAction(nameof(Index));
+        }
+
         // GET: /Cart/Checkout
         [Authorize]
         public async Task<IActionResult> Checkout()
@@ -188,8 +377,18 @@ namespace OnlineBookStoreManagement.Controllers
                     City = user?.City ?? "",
                     PostalCode = user?.PostalCode ?? "",
                     PhoneNumber = user?.PhoneNumber ?? ""
-                }
+                },
+                StockValidationErrors = ValidateCartStock(cartItems)
             };
+
+            var (appliedCode, discountAmount, couponInfo) = await ProcessSessionCouponAsync(vm.SubTotal);
+            vm.CouponCode = appliedCode;
+            vm.DiscountAmount = discountAmount;
+
+            if (vm.StockValidationErrors.Any())
+            {
+                TempData["ErrorMessage"] = "Some items in your cart have stock restrictions. Please review before proceeding.";
+            }
 
             return View(vm);
         }
@@ -219,10 +418,56 @@ namespace OnlineBookStoreManagement.Controllers
             ModelState.Remove("OrderHeader.UserId");
             ModelState.Remove("OrderHeader.User");
 
-            if (!ModelState.IsValid)
+            // Server-side robust checkout validation (Address & Contact formatting)
+            if (string.IsNullOrWhiteSpace(vm.OrderHeader.Name))
             {
+                ModelState.AddModelError("OrderHeader.Name", "Recipient Full Name is required.");
+            }
+            if (string.IsNullOrWhiteSpace(vm.OrderHeader.PhoneNumber) || vm.OrderHeader.PhoneNumber.Trim().Length < 8)
+            {
+                ModelState.AddModelError("OrderHeader.PhoneNumber", "Valid phone number (minimum 8 digits) is required.");
+            }
+            if (string.IsNullOrWhiteSpace(vm.OrderHeader.StreetAddress))
+            {
+                ModelState.AddModelError("OrderHeader.StreetAddress", "Street Address is required.");
+            }
+            if (string.IsNullOrWhiteSpace(vm.OrderHeader.City))
+            {
+                ModelState.AddModelError("OrderHeader.City", "City is required.");
+            }
+            if (string.IsNullOrWhiteSpace(vm.OrderHeader.PostalCode) || vm.OrderHeader.PostalCode.Trim().Length < 4)
+            {
+                ModelState.AddModelError("OrderHeader.PostalCode", "Valid Postal / PIN Code is required.");
+            }
+
+            // Real-time Stock Validation Guard
+            var stockErrors = ValidateCartStock(cartItems);
+            if (stockErrors.Any())
+            {
+                foreach (var err in stockErrors)
+                {
+                    ModelState.AddModelError(string.Empty, err);
+                }
+                vm.StockValidationErrors = stockErrors;
+                var (code, discount, _) = await ProcessSessionCouponAsync(vm.SubTotal);
+                vm.CouponCode = code;
+                vm.DiscountAmount = discount;
+                TempData["ErrorMessage"] = "Please adjust cart quantities to match available stock before placing your order.";
                 return View(vm);
             }
+
+            if (!ModelState.IsValid)
+            {
+                var (code, discount, _) = await ProcessSessionCouponAsync(vm.SubTotal);
+                vm.CouponCode = code;
+                vm.DiscountAmount = discount;
+                return View(vm);
+            }
+
+            // Calculate Discount & Order Totals
+            var (appliedCoupon, couponDiscount, _) = await ProcessSessionCouponAsync(vm.SubTotal);
+            vm.CouponCode = appliedCoupon;
+            vm.DiscountAmount = couponDiscount;
 
             // Create Order Header
             var orderHeader = vm.OrderHeader;
@@ -237,41 +482,58 @@ namespace OnlineBookStoreManagement.Controllers
                 _ => "Approved (UPI / Net Banking)"
             };
             orderHeader.PaymentStatus = paymentMethodTitle;
+            orderHeader.CouponCode = appliedCoupon;
+            orderHeader.DiscountAmount = couponDiscount;
             orderHeader.OrderTotal = vm.GrandTotal;
 
-            await _db.OrderHeaders.AddAsync(orderHeader);
-            await _db.SaveChangesAsync();
-
-            // Create Order Details & Deduct Stock
-            foreach (var item in cartItems)
+            using var transaction = await _db.Database.BeginTransactionAsync();
+            try
             {
-                var detail = new OrderDetail
-                {
-                    OrderHeaderId = orderHeader.Id,
-                    BookId = item.BookId,
-                    Count = item.Count,
-                    Price = item.Book!.Price
-                };
-                await _db.OrderDetails.AddAsync(detail);
+                await _db.OrderHeaders.AddAsync(orderHeader);
+                await _db.SaveChangesAsync();
 
-                // Deduct stock
-                if (item.Book != null)
+                // Create Order Details & Deduct Stock Atomically
+                foreach (var item in cartItems)
                 {
-                    item.Book.StockQuantity -= item.Count;
-                    if (item.Book.StockQuantity < 0) item.Book.StockQuantity = 0;
-
-                    if (item.Book.StockQuantity < 5)
+                    var detail = new OrderDetail
                     {
-                        _logger.LogWarning("LOW-STOCK ALERT: Book '{Title}' (ID: {BookId}) stock dropped to {StockQuantity} units (< 5 units) after Order #{OrderId}.",
-                            item.Book.Title, item.Book.Id, item.Book.StockQuantity, orderHeader.Id);
+                        OrderHeaderId = orderHeader.Id,
+                        BookId = item.BookId,
+                        Count = item.Count,
+                        Price = item.Book!.Price
+                    };
+                    await _db.OrderDetails.AddAsync(detail);
+
+                    // Deduct stock
+                    if (item.Book != null)
+                    {
+                        item.Book.StockQuantity -= item.Count;
+                        if (item.Book.StockQuantity < 0) item.Book.StockQuantity = 0;
+
+                        if (item.Book.StockQuantity < 5)
+                        {
+                            _logger.LogWarning("LOW-STOCK ALERT: Book '{Title}' (ID: {BookId}) stock dropped to {StockQuantity} units (< 5 units) after Order #{OrderId}.",
+                                item.Book.Title, item.Book.Id, item.Book.StockQuantity, orderHeader.Id);
+                        }
                     }
                 }
+
+                // Clear Cart items from Database
+                _db.ShoppingCartItems.RemoveRange(cartItems);
+                await _db.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                // Clear applied coupon from Session
+                HttpContext.Session.Remove(SessionCouponKey);
             }
-
-            // Clear Cart items from Database
-            _db.ShoppingCartItems.RemoveRange(cartItems);
-
-            await _db.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to complete checkout order for user {UserId}", userId);
+                TempData["ErrorMessage"] = "An error occurred while processing your order. Please try again.";
+                return View(vm);
+            }
 
             // Fetch order user email and send Order Confirmation Email via SMTP
             var orderUser = await _userManager.FindByIdAsync(userId!);

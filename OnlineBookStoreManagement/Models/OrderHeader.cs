@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OnlineBookStoreManagement.Models
@@ -19,6 +19,11 @@ namespace OnlineBookStoreManagement.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal OrderTotal { get; set; }
+
+        public string? CouponCode { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal DiscountAmount { get; set; } = 0.00m;
 
         public string? OrderStatus { get; set; } // Pending, Processing, Shipped, Delivered, Cancelled
         public string? PaymentStatus { get; set; } // Pending, Approved, Rejected, Refunded

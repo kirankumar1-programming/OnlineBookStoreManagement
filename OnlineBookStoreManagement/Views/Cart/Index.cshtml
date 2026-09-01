@@ -1,6 +1,5 @@
 @using OnlineBookStoreManagement.Models.ViewModels
 
-
 @model ShoppingCartViewModel
 @{
     ViewData["Title"] = "Shopping Cart";
@@ -12,6 +11,19 @@
         <i class="bi bi-arrow-left me-1"></i> Continue Shopping
     </a>
 </div>
+
+@if (Model.StockValidationErrors.Any())
+{
+    <div class="alert alert-warning border-warning bg-dark text-warning mb-4 p-3 rounded-3 shadow">
+        <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i> Inventory Warning</h6>
+        <ul class="mb-0 ps-3 small">
+            @foreach (var error in Model.StockValidationErrors)
+            {
+                <li>@error</li>
+            }
+        </ul>
+    </div>
+}
 
 @if (!Model.CartItems.Any())
 {
@@ -46,7 +58,11 @@ else
                         <tbody>
                             @foreach (var item in Model.CartItems)
                             {
-                                <tr>
+                                var stock = item.Book?.StockQuantity ?? 0;
+                                var isStockExceeded = item.Count > stock;
+                                var isOutOfStock = stock <= 0;
+
+                                <tr class="@(isStockExceeded || isOutOfStock ? "table-danger bg-opacity-10" : "")">
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
                                             <img src="@(string.IsNullOrEmpty(item.Book?.CoverImageUrl) ? "/images/default-book.svg" : item.Book.CoverImageUrl)" 
@@ -54,26 +70,38 @@ else
                                                  onerror="this.onerror=null; this.src='/images/default-book.svg';" />
                                             <div>
                                                 <h6 class="fw-bold text-white mb-1">@item.Book?.Title</h6>
-                                                <small class="text-muted">by @item.Book?.Author</small>
+                                                <small class="text-muted d-block">by @item.Book?.Author</small>
+                                                @if (isOutOfStock)
+                                                {
+                                                    <span class="badge bg-danger text-white mt-1">Out of Stock</span>
+                                                }
+                                                else if (isStockExceeded)
+                                                {
+                                                    <span class="badge bg-warning text-dark mt-1">Only @stock left!</span>
+                                                }
+                                                else
+                                                {
+                                                    <small class="text-success fw-semibold mt-1 d-block"><i class="bi bi-check-circle me-1"></i> In Stock (@stock available)</small>
+                                                }
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="text-center fw-semibold text-light">₹@item.Book?.Price.ToString("N2")</td>
-                                    <td class="text-center">
-                                        <div class="d-inline-flex align-items-center gap-2 bg-dark p-1 rounded border border-secondary">
-                                            <form asp-action="Minus" method="post">
-                                                <input type="hidden" name="cartId" value="@item.Id" />
-                                                <button type="submit" class="btn btn-sm btn-link text-light p-0 px-2 text-decoration-none">-</button>
-                                            </form>
-                                            <span class="fw-bold text-white px-2">@item.Count</span>
-                                            <form asp-action="Plus" method="post">
-                                                <input type="hidden" name="cartId" value="@item.Id" />
-                                                <button type="submit" class="btn btn-sm btn-link text-light p-0 px-2 text-decoration-none">+</button>
-                                            </form>
-                                        </div>
+                                    <td class="text-center fw-semibold text-light align-middle">₹@item.Book?.Price.ToString("N2")</td>
+                                    <td class="text-center align-middle">
+                                        <form asp-action="UpdateQuantity" method="post" class="d-inline-flex align-items-center gap-1 bg-dark p-1 rounded border border-secondary">
+                                            <input type="hidden" name="cartId" value="@item.Id" />
+                                            
+                                            <button type="submit" name="quantity" value="@(item.Count - 1)" class="btn btn-sm btn-link text-light p-0 px-2 text-decoration-none" title="Decrease">-</button>
+                                            
+                                            <input type="number" name="quantity" value="@item.Count" min="1" max="@stock" 
+                                                   class="form-control form-control-sm text-center font-monospace bg-dark text-white border-0 p-0" 
+                                                   style="width: 45px; font-weight: bold;" onchange="this.form.submit()" />
+                                            
+                                            <button type="submit" name="quantity" value="@(item.Count + 1)" class="btn btn-sm btn-link text-light p-0 px-2 text-decoration-none" title="Increase" @(item.Count >= stock ? "disabled" : "")>+</button>
+                                        </form>
                                     </td>
-                                    <td class="text-end fw-bold text-accent">₹@item.Price.ToString("N2")</td>
-                                    <td class="text-end">
+                                    <td class="text-end fw-bold text-accent align-middle">₹@item.Price.ToString("N2")</td>
+                                    <td class="text-end align-middle">
                                         <form asp-action="Remove" method="post">
                                             <input type="hidden" name="cartId" value="@item.Id" />
                                             <button type="submit" class="btn btn-sm text-danger hover-white border-0 bg-transparent" title="Remove Item">
@@ -89,8 +117,43 @@ else
             </div>
         </div>
 
-        <!-- Cart Summary Card -->
+        <!-- Cart Summary & Discount Sidebar -->
         <div class="col-lg-4">
+            <!-- Coupon Card -->
+            <div class="card bg-card border-secondary shadow-lg p-3 mb-3">
+                <h6 class="fw-bold text-white mb-2"><i class="bi bi-tag me-1 text-warning"></i> Coupon &amp; Discount</h6>
+
+                @if (!string.IsNullOrEmpty(Model.CouponCode) && Model.DiscountAmount > 0)
+                {
+                    <div class="alert alert-success border-success bg-dark text-success p-2.5 mb-2 d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="badge bg-success text-dark fw-bold me-1">@Model.CouponCode</span>
+                            <small class="fw-bold">Saved ₹@Model.DiscountAmount.ToString("N2")</small>
+                        </div>
+                        <form asp-action="RemoveCoupon" method="post">
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2 small">Remove</button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <form asp-action="ApplyCoupon" method="post" class="mb-2">
+                        <div class="input-group">
+                            <input type="text" name="couponCode" class="form-control form-control-custom text-uppercase" placeholder="Enter Promo Code" required />
+                            <button type="submit" class="btn btn-primary-gradient px-3 fw-bold">Apply</button>
+                        </div>
+                    </form>
+
+                    <div class="small text-muted">
+                        Available Coupons: 
+                        <span class="badge bg-dark border border-secondary text-info cursor-pointer" onclick="document.querySelector('[name=couponCode]').value='WELCOME10'">WELCOME10</span>
+                        <span class="badge bg-dark border border-secondary text-info cursor-pointer" onclick="document.querySelector('[name=couponCode]').value='FLAT100'">FLAT100</span>
+                        <span class="badge bg-dark border border-secondary text-info cursor-pointer" onclick="document.querySelector('[name=couponCode]').value='BOOKWORM20'">BOOKWORM20</span>
+                    </div>
+                }
+            </div>
+
+            <!-- Order Summary Card -->
             <div class="card bg-card border-secondary shadow-lg p-4">
                 <h5 class="fw-bold text-white mb-4"><i class="bi bi-receipt me-2 text-primary"></i> Order Summary</h5>
                 
@@ -98,10 +161,24 @@ else
                     <span>Subtotal (@Model.CartItems.Sum(i => i.Count) items)</span>
                     <span class="text-light font-monospace">₹@Model.SubTotal.ToString("N2")</span>
                 </div>
+
+                @if (Model.DiscountAmount > 0)
+                {
+                    <div class="d-flex justify-content-between mb-3 text-success">
+                        <span><i class="bi bi-tag-fill me-1"></i> Discount (@Model.CouponCode)</span>
+                        <span class="fw-bold font-monospace">-₹@Model.DiscountAmount.ToString("N2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 text-muted">
+                        <span>Discounted Subtotal</span>
+                        <span class="text-light font-monospace">₹@Model.SubTotalAfterDiscount.ToString("N2")</span>
+                    </div>
+                }
+
                 <div class="d-flex justify-content-between mb-3 text-muted">
                     <span>Estimated GST / Tax (8%)</span>
                     <span class="text-light font-monospace">₹@Model.EstimatedTax.ToString("N2")</span>
                 </div>
+                
                 <div class="d-flex justify-content-between mb-3 text-muted">
                     <span>Shipping</span>
                     @if (Model.ShippingFee == 0)
@@ -114,10 +191,10 @@ else
                     }
                 </div>
 
-                @if (Model.SubTotal < 999.00m && Model.SubTotal > 0)
+                @if (Model.SubTotalAfterDiscount < 999.00m && Model.SubTotalAfterDiscount > 0)
                 {
                     <div class="alert alert-info py-2 px-3 small border-0 bg-dark text-info mb-3">
-                        <i class="bi bi-info-circle me-1"></i> Add <strong>₹@((999.00m - Model.SubTotal).ToString("N2"))</strong> more to qualify for FREE shipping!
+                        <i class="bi bi-info-circle me-1"></i> Add <strong>₹@((999.00m - Model.SubTotalAfterDiscount).ToString("N2"))</strong> more to qualify for FREE shipping!
                     </div>
                 }
 
@@ -128,11 +205,19 @@ else
                     <span class="fs-4 fw-extrabold text-accent font-monospace">₹@Model.GrandTotal.ToString("N2")</span>
                 </div>
 
-                <a asp-action="Checkout" class="btn btn-primary-gradient w-100 py-3 fw-bold fs-6">
-                    Proceed to Checkout <i class="bi bi-credit-card ms-2"></i>
-                </a>
+                @if (Model.StockValidationErrors.Any())
+                {
+                    <button type="button" class="btn btn-secondary w-100 py-3 fw-bold fs-6" disabled>
+                        <i class="bi bi-exclamation-triangle me-2"></i> Fix Stock Errors to Checkout
+                    </button>
+                }
+                else
+                {
+                    <a asp-action="Checkout" class="btn btn-primary-gradient w-100 py-3 fw-bold fs-6">
+                        Proceed to Checkout <i class="bi bi-credit-card ms-2"></i>
+                    </a>
+                }
             </div>
         </div>
     </div>
 }
-

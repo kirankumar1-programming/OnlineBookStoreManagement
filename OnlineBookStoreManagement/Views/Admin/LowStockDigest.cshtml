@@ -95,7 +95,7 @@
         <h5 class="card-title text-white mb-0">
             <i class="bi bi-x-circle me-2 text-danger"></i> Out-of-Stock Titles (@Model.OutOfStockCount)
         </h5>
-        <span class="badge bg-danger bg-opacity-25 text-danger border border-danger">Action Required</span>
+        <span class="badge bg-danger text-white fw-bold px-3 py-1.5 rounded-pill shadow-sm">Action Required</span>
     </div>
     <div class="card-body p-0">
         @if (Model.OutOfStockBooks.Any())
@@ -165,7 +165,7 @@
         <h5 class="card-title text-white mb-0">
             <i class="bi bi-exclamation-triangle me-2 text-warning"></i> Low-Stock Titles (&le; @Model.Threshold copies) (@Model.LowStockCount)
         </h5>
-        <span class="badge bg-warning bg-opacity-25 text-warning border border-warning">Replenish Soon</span>
+        <span class="badge bg-warning text-dark fw-bold px-3 py-1.5 rounded-pill shadow-sm">Replenish Soon</span>
     </div>
     <div class="card-body p-0">
         @if (Model.LowStockBooks.Any())
@@ -206,7 +206,7 @@
                                 <td><span class="font-monospace text-muted small">@book.ISBN</span></td>
                                 <td class="text-end fw-bold text-accent font-monospace">₹@book.Price.ToString("N2")</td>
                                 <td class="text-center">
-                                    <span class="badge bg-warning bg-opacity-25 text-warning fw-bold px-2.5 py-1 rounded-pill">
+                                    <span class="badge bg-warning text-dark fw-bold px-2.5 py-1 rounded-pill shadow-sm">
                                         @book.StockQuantity Left
                                     </span>
                                 </td>

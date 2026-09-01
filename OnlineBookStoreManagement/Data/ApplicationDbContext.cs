@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using OnlineBookStoreManagement.Models;
 
@@ -18,6 +18,7 @@ namespace OnlineBookStoreManagement.Data
         public DbSet<OrderHeader> OrderHeaders { get; set; } = null!;
         public DbSet<OrderDetail> OrderDetails { get; set; } = null!;
         public DbSet<BookReview> BookReviews { get; set; } = null!;
+        public DbSet<Coupon> Coupons { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder builder)

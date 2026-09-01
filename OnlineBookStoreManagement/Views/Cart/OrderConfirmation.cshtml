@@ -99,6 +99,18 @@
                     <i class="bi bi-receipt me-2 text-success"></i> Payment Summary
                 </h5>
                 
+                @if (!string.IsNullOrEmpty(Model.CouponCode) || Model.DiscountAmount > 0)
+                {
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span><i class="bi bi-tag-fill me-1"></i> Coupon Applied</span>
+                        <span class="badge bg-success text-dark font-monospace fw-bold">@Model.CouponCode</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-success small">
+                        <span>Discount Savings</span>
+                        <span class="fw-bold font-monospace">-₹@Model.DiscountAmount.ToString("N2")</span>
+                    </div>
+                }
+
                 <div class="d-flex justify-content-between mb-2 text-muted">
                     <span>Grand Total Paid</span>
                     <span class="text-accent font-monospace fw-bold fs-5">₹@Model.OrderTotal.ToString("N2")</span>

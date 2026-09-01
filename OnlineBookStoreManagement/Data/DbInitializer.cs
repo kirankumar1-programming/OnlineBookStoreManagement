@@ -21,6 +21,36 @@ namespace OnlineBookStoreManagement.Data
             // Ensure Database is Created
             await context.Database.EnsureCreatedAsync();
 
+            // Schema Migration Guard for Existing SQLite Database Files
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS ""Coupons"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_Coupons"" PRIMARY KEY AUTOINCREMENT,
+                        ""Code"" TEXT NOT NULL,
+                        ""Description"" TEXT NOT NULL,
+                        ""DiscountType"" TEXT NOT NULL,
+                        ""DiscountValue"" TEXT NOT NULL,
+                        ""MinimumOrderAmount"" TEXT NOT NULL,
+                        ""MaximumDiscountAmount"" TEXT NULL,
+                        ""IsActive"" INTEGER NOT NULL,
+                        ""ExpiryDate"" TEXT NULL
+                    );");
+            }
+            catch { /* Table already exists */ }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE OrderHeaders ADD COLUMN CouponCode TEXT NULL;");
+            }
+            catch { /* Column already exists */ }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE OrderHeaders ADD COLUMN DiscountAmount TEXT NOT NULL DEFAULT '0.00';");
+            }
+            catch { /* Column already exists */ }
+
             // 1. Seed Roles
             if (!await roleManager.RoleExistsAsync(Role_Admin))
             {
@@ -325,6 +355,58 @@ namespace OnlineBookStoreManagement.Data
                         await context.SaveChangesAsync();
                     }
                 }
+            }
+
+            // 8. Seed Discount Coupons
+            if (!await context.Coupons.AnyAsync())
+            {
+                var coupons = new List<Coupon>
+                {
+                    new Coupon
+                    {
+                        Code = "WELCOME10",
+                        Description = "10% discount on all books (No minimum order)",
+                        DiscountType = "Percentage",
+                        DiscountValue = 10m,
+                        MinimumOrderAmount = 0m,
+                        IsActive = true,
+                        ExpiryDate = DateTime.UtcNow.AddYears(1)
+                    },
+                    new Coupon
+                    {
+                        Code = "BOOKWORM20",
+                        Description = "20% discount (up to ₹200) on minimum order of ₹500",
+                        DiscountType = "Percentage",
+                        DiscountValue = 20m,
+                        MinimumOrderAmount = 500m,
+                        MaximumDiscountAmount = 200m,
+                        IsActive = true,
+                        ExpiryDate = DateTime.UtcNow.AddYears(1)
+                    },
+                    new Coupon
+                    {
+                        Code = "FLAT100",
+                        Description = "Flat ₹100 discount on minimum order of ₹600",
+                        DiscountType = "Flat",
+                        DiscountValue = 100m,
+                        MinimumOrderAmount = 600m,
+                        IsActive = true,
+                        ExpiryDate = DateTime.UtcNow.AddYears(1)
+                    },
+                    new Coupon
+                    {
+                        Code = "SAVE50",
+                        Description = "Flat ₹50 discount on minimum order of ₹300",
+                        DiscountType = "Flat",
+                        DiscountValue = 50m,
+                        MinimumOrderAmount = 300m,
+                        IsActive = true,
+                        ExpiryDate = DateTime.UtcNow.AddYears(1)
+                    }
+                };
+
+                await context.Coupons.AddRangeAsync(coupons);
+                await context.SaveChangesAsync();
             }
         }
     }

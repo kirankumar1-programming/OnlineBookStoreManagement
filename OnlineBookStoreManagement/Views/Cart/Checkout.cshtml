@@ -9,6 +9,22 @@
     <p class="text-muted">Review your shipping details and select your preferred payment method.</p>
 </div>
 
+@if (Model.StockValidationErrors.Any())
+{
+    <div class="alert alert-danger border-danger bg-dark text-danger mb-4 p-3 rounded-3 shadow">
+        <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i> Stock Validation Issue</h6>
+        <ul class="mb-0 ps-3 small">
+            @foreach (var error in Model.StockValidationErrors)
+            {
+                <li>@error</li>
+            }
+        </ul>
+        <div class="mt-2">
+            <a asp-action="Index" class="btn btn-sm btn-outline-danger fw-semibold">Return to Cart &amp; Adjust Quantities</a>
+        </div>
+    </div>
+}
+
 <form id="checkoutForm" asp-action="Checkout" method="post">
     <div class="row g-4">
         <!-- Shipping & Contact Information Form -->
@@ -104,6 +120,19 @@
                     <span>Subtotal</span>
                     <span class="text-light font-monospace">₹@Model.SubTotal.ToString("N2")</span>
                 </div>
+
+                @if (Model.DiscountAmount > 0)
+                {
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span><i class="bi bi-tag-fill me-1"></i> Discount (@Model.CouponCode)</span>
+                        <span class="fw-bold font-monospace">-₹@Model.DiscountAmount.ToString("N2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-muted">
+                        <span>Discounted Subtotal</span>
+                        <span class="text-light font-monospace">₹@Model.SubTotalAfterDiscount.ToString("N2")</span>
+                    </div>
+                }
+
                 <div class="d-flex justify-content-between mb-2 text-muted">
                     <span>GST / Tax (8%)</span>
                     <span class="text-light font-monospace">₹@Model.EstimatedTax.ToString("N2")</span>
@@ -127,9 +156,18 @@
                     <span class="fs-4 fw-extrabold text-accent font-monospace">₹@Model.GrandTotal.ToString("N2")</span>
                 </div>
 
-                <button type="button" id="btnOpenPaymentGateway" class="btn btn-primary-gradient w-100 py-3 fw-bold fs-6 shadow">
-                    <i class="bi bi-lock-fill me-2"></i> Pay &amp; Place Order (₹@Model.GrandTotal.ToString("N2"))
-                </button>
+                @if (Model.StockValidationErrors.Any())
+                {
+                    <button type="button" class="btn btn-secondary w-100 py-3 fw-bold fs-6" disabled>
+                        <i class="bi bi-exclamation-triangle me-2"></i> Fix Stock Errors Before Payment
+                    </button>
+                }
+                else
+                {
+                    <button type="button" id="btnOpenPaymentGateway" class="btn btn-primary-gradient w-100 py-3 fw-bold fs-6 shadow">
+                        <i class="bi bi-lock-fill me-2"></i> Pay &amp; Place Order (₹@Model.GrandTotal.ToString("N2"))
+                    </button>
+                }
             </div>
         </div>
     </div>

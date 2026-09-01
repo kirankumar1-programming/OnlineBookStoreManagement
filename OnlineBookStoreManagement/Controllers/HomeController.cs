@@ -21,13 +21,18 @@ namespace OnlineBookStoreManagement.Controllers
             _userManager = userManager;
         }
 
-        // GET: / Home/Index (Storefront Catalog with Search, Category & Price Filtering, Sorting, Pagination)
+        // GET: / Home/Index (Storefront Catalog with Multi-Keyword Search, Multi-Select Checkboxes for Category, Author, Price & Rating Filtering, Sorting, Pagination)
         public async Task<IActionResult> Index(
+            [FromQuery] List<int>? categoryIds,
             int? categoryId,
+            [FromQuery] List<string>? authors,
+            string? author,
             string? searchTerm,
             string? sortBy,
             decimal? minPrice,
             decimal? maxPrice,
+            [FromQuery] List<double>? minRatings,
+            double? minRating,
             int page = 1)
         {
             int pageSize = 6;
@@ -35,20 +40,59 @@ namespace OnlineBookStoreManagement.Controllers
                 .Include(b => b.Category)
                 .Include(b => b.Reviews);
 
-            // Filter by Category
-            if (categoryId.HasValue && categoryId.Value > 0)
+            // Combine list parameters and single parameters for categories
+            var selectedCategoryIds = categoryIds?.Where(id => id > 0).ToList() ?? new List<int>();
+            if (categoryId.HasValue && categoryId.Value > 0 && !selectedCategoryIds.Contains(categoryId.Value))
             {
-                booksQuery = booksQuery.Where(b => b.CategoryId == categoryId.Value);
+                selectedCategoryIds.Add(categoryId.Value);
             }
 
-            // Filter by Search Term (Title, Author, ISBN)
+            // Combine list parameters and single parameters for authors
+            var selectedAuthors = authors?.Where(a => !string.IsNullOrWhiteSpace(a)).ToList() ?? new List<string>();
+            if (!string.IsNullOrWhiteSpace(author) && !selectedAuthors.Contains(author))
+            {
+                selectedAuthors.Add(author);
+            }
+
+            // Combine list parameters and single parameters for ratings
+            var selectedRatings = minRatings?.Where(r => r > 0).ToList() ?? new List<double>();
+            if (minRating.HasValue && minRating.Value > 0 && !selectedRatings.Contains(minRating.Value))
+            {
+                selectedRatings.Add(minRating.Value);
+            }
+
+            // Filter by Multi-Select Categories
+            if (selectedCategoryIds.Any())
+            {
+                booksQuery = booksQuery.Where(b => selectedCategoryIds.Contains(b.CategoryId));
+            }
+
+            // Filter by Multi-Select Authors
+            if (selectedAuthors.Any())
+            {
+                booksQuery = booksQuery.Where(b => selectedAuthors.Contains(b.Author));
+            }
+
+            // Filter by Multi-Select Ratings (matching books meeting lowest selected rating threshold)
+            if (selectedRatings.Any())
+            {
+                double lowestRatingThreshold = selectedRatings.Min();
+                booksQuery = booksQuery.Where(b => b.Reviews.Any() && b.Reviews.Average(r => (double)r.Rating) >= lowestRatingThreshold);
+            }
+
+            // Filter by Multi-word Keyword Search (Title, Author, ISBN, Description)
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                var term = searchTerm.Trim().ToLower();
-                booksQuery = booksQuery.Where(b =>
-                    b.Title.ToLower().Contains(term) ||
-                    b.Author.ToLower().Contains(term) ||
-                    b.ISBN.ToLower().Contains(term));
+                var terms = searchTerm.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var term in terms)
+                {
+                    var lowercaseTerm = term.ToLower();
+                    booksQuery = booksQuery.Where(b =>
+                        b.Title.ToLower().Contains(lowercaseTerm) ||
+                        b.Author.ToLower().Contains(lowercaseTerm) ||
+                        b.ISBN.ToLower().Contains(lowercaseTerm) ||
+                        b.Description.ToLower().Contains(lowercaseTerm));
+                }
             }
 
             // Filter by Price Range
@@ -61,13 +105,20 @@ namespace OnlineBookStoreManagement.Controllers
                 booksQuery = booksQuery.Where(b => b.Price <= maxPrice.Value);
             }
 
+            // Sanitize sortBy in case multiple values arrive via duplicate query params
+            var activeSort = sortBy?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+
             // Sorting
-            booksQuery = sortBy switch
+            booksQuery = activeSort switch
             {
-                "price_asc" => booksQuery.OrderBy(b => b.Price),
-                "price_desc" => booksQuery.OrderByDescending(b => b.Price),
+                "price_asc" => booksQuery.OrderBy(b => b.Price).ThenBy(b => b.Title),
+                "price_desc" => booksQuery.OrderByDescending(b => b.Price).ThenBy(b => b.Title),
                 "title_asc" => booksQuery.OrderBy(b => b.Title),
-                "newest" => booksQuery.OrderByDescending(b => b.CreatedAt),
+                "title_desc" => booksQuery.OrderByDescending(b => b.Title),
+                "author_asc" => booksQuery.OrderBy(b => b.Author).ThenBy(b => b.Title),
+                "newest" => booksQuery.OrderByDescending(b => b.CreatedAt).ThenByDescending(b => b.Id),
+                "rating_desc" => booksQuery.OrderByDescending(b => b.Reviews.Any() ? b.Reviews.Average(r => (double)r.Rating) : 0).ThenByDescending(b => b.Reviews.Count),
+                "most_reviewed" => booksQuery.OrderByDescending(b => b.Reviews.Count).ThenByDescending(b => b.Id),
                 _ => booksQuery.OrderByDescending(b => b.Id)
             };
 
@@ -85,13 +136,23 @@ namespace OnlineBookStoreManagement.Controllers
                 .OrderBy(c => c.DisplayOrder)
                 .ToListAsync();
 
+            var distinctAuthors = await _db.Books
+                .Select(b => b.Author)
+                .Where(a => !string.IsNullOrEmpty(a))
+                .Distinct()
+                .OrderBy(a => a)
+                .ToListAsync();
+
             var viewModel = new StoreIndexViewModel
             {
                 Books = books,
                 Categories = categories,
-                SelectedCategoryId = categoryId,
+                Authors = distinctAuthors,
+                SelectedCategoryIds = selectedCategoryIds,
+                SelectedAuthors = selectedAuthors,
+                SelectedRatings = selectedRatings,
                 SearchTerm = searchTerm,
-                SortBy = sortBy,
+                SortBy = activeSort,
                 MinPrice = minPrice,
                 MaxPrice = maxPrice,
                 CurrentPage = page,
@@ -112,15 +173,21 @@ namespace OnlineBookStoreManagement.Controllers
                 return Json(Array.Empty<object>());
             }
 
-            var term = query.Trim().ToLower();
+            var terms = query.Trim().ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            var matches = await _db.Books
-                .Include(b => b.Category)
-                .Where(b => b.Title.ToLower().Contains(term) ||
-                            b.Author.ToLower().Contains(term) ||
-                            b.ISBN.ToLower().Contains(term))
-                .OrderByDescending(b => b.Title.ToLower().StartsWith(term))
-                .ThenByDescending(b => b.Author.ToLower().StartsWith(term))
+            IQueryable<Book> matchesQuery = _db.Books.Include(b => b.Category);
+            foreach (var term in terms)
+            {
+                matchesQuery = matchesQuery.Where(b =>
+                    b.Title.ToLower().Contains(term) ||
+                    b.Author.ToLower().Contains(term) ||
+                    b.ISBN.ToLower().Contains(term) ||
+                    b.Description.ToLower().Contains(term));
+            }
+
+            var matches = await matchesQuery
+                .OrderByDescending(b => b.Title.ToLower().StartsWith(terms[0]))
+                .ThenByDescending(b => b.Author.ToLower().StartsWith(terms[0]))
                 .ThenBy(b => b.Title)
                 .Take(6)
                 .Select(b => new
