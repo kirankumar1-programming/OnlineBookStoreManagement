@@ -153,22 +153,35 @@ namespace OnlineBookStoreManagement.Controllers
 
         private async Task<ChatResponseDto> HandleOrderTrackingAsync(string input, string userId)
         {
+            bool isAdmin = User.IsInRole(DbInitializer.Role_Admin) || User.IsInRole("Administrator");
+
             // Extract numeric order ID if explicitly requested like "order #3" or "track 5"
             var match = Regex.Match(input, @"(?:order\s*#?\s*|track\s*#?\s*)(\d+)");
             int? explicitOrderId = match.Success ? int.Parse(match.Groups[1].Value) : null;
 
             if (explicitOrderId.HasValue)
             {
+                if (string.IsNullOrEmpty(userId) && !isAdmin)
+                {
+                    return new ChatResponseDto
+                    {
+                        Reply = "🔐 Please **sign in** to view your order details.",
+                        ActionUrl = "/Account/Login?returnUrl=/Cart",
+                        ActionText = "Sign In Now",
+                        Options = GetDefaultOptions()
+                    };
+                }
+
                 var order = await _db.OrderHeaders
                     .Include(o => o.OrderDetails)
                     .ThenInclude(d => d.Book)
-                    .FirstOrDefaultAsync(o => o.Id == explicitOrderId.Value);
+                    .FirstOrDefaultAsync(o => o.Id == explicitOrderId.Value && (isAdmin || o.UserId == userId));
 
                 if (order == null)
                 {
                     return new ChatResponseDto
                     {
-                        Reply = $"⚠️ Could not find Order **#{explicitOrderId.Value}**. Please verify the order number and try again.",
+                        Reply = $"⚠️ Could not find Order **#{explicitOrderId.Value}** or you do not have permission to view this order.",
                         Options = GetDefaultOptions()
                     };
                 }

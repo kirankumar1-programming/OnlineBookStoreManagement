@@ -1,0 +1,76 @@
+@model OnlineBookStoreManagement.Models.Coupon
+@{
+    ViewData["Title"] = "Delete Promotional Coupon";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="fw-bold text-white mb-1">
+                    <i class="bi bi-trash text-danger me-2"></i> Delete Coupon
+                </h2>
+                <p class="text-muted mb-0">Confirm deletion of promotional coupon.</p>
+            </div>
+            <a asp-action="Coupons" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Coupons
+            </a>
+        </div>
+
+        <div class="card bg-card border-danger shadow-lg">
+            <div class="card-body p-4">
+                <div class="alert alert-warning border-warning d-flex align-items-center gap-3 mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill fs-3 text-warning"></i>
+                    <div>
+                        <strong class="d-block">Are you sure you want to delete this coupon?</strong>
+                        <span>This action cannot be undone. Customers will no longer be able to redeem this coupon code.</span>
+                    </div>
+                </div>
+
+                <div class="bg-dark p-3 rounded-3 border border-secondary mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="badge bg-dark border border-secondary text-success font-monospace px-3 py-2 fs-6">
+                            <i class="bi bi-tag-fill me-1"></i>@Model.Code
+                        </span>
+                        <span class="badge @(Model.IsActive ? "bg-success" : "bg-secondary")">
+                            @(Model.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </div>
+                    <p class="text-light mb-2 fw-semibold">@Model.Description</p>
+                    <div class="row g-2 text-muted small border-top border-secondary pt-2 mt-2">
+                        <div class="col-6">
+                            <span class="text-light fw-bold">Discount:</span>
+                            @if (Model.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span>@Model.DiscountValue% OFF</span>
+                            }
+                            else
+                            {
+                                <span>₹@Model.DiscountValue.ToString("N2") OFF</span>
+                            }
+                        </div>
+                        <div class="col-6">
+                            <span class="text-light fw-bold">Min Order:</span> ₹@Model.MinimumOrderAmount.ToString("N2")
+                        </div>
+                        <div class="col-6">
+                            <span class="text-light fw-bold">Times Used:</span> @Model.TimesUsed @(Model.UsageLimit.HasValue ? $"/ {Model.UsageLimit.Value}" : "")
+                        </div>
+                        <div class="col-6">
+                            <span class="text-light fw-bold">Expiry:</span> @(Model.ExpiryDate.HasValue ? Model.ExpiryDate.Value.ToString("yyyy-MM-dd") : "None")
+                        </div>
+                    </div>
+                </div>
+
+                <form asp-action="DeleteCoupon" method="post">
+                    <input type="hidden" asp-for="Id" />
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="Coupons" class="btn btn-outline-secondary px-4">Cancel</a>
+                        <button type="submit" class="btn btn-danger px-4 fw-bold">
+                            <i class="bi bi-trash me-1"></i> Confirm Delete
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

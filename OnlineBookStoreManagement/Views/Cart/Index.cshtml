@@ -91,13 +91,13 @@ else
                                         <form asp-action="UpdateQuantity" method="post" class="d-inline-flex align-items-center gap-1 bg-dark p-1 rounded border border-secondary">
                                             <input type="hidden" name="cartId" value="@item.Id" />
                                             
-                                            <button type="submit" name="quantity" value="@(item.Count - 1)" class="btn btn-sm btn-link text-light p-0 px-2 text-decoration-none" title="Decrease">-</button>
+                                            <button type="submit" asp-action="Minus" asp-route-cartId="@item.Id" class="btn btn-sm btn-link text-light p-0 px-2 text-decoration-none" title="Decrease">-</button>
                                             
                                             <input type="number" name="quantity" value="@item.Count" min="1" max="@stock" 
                                                    class="form-control form-control-sm text-center font-monospace bg-dark text-white border-0 p-0" 
                                                    style="width: 45px; font-weight: bold;" onchange="this.form.submit()" />
                                             
-                                            <button type="submit" name="quantity" value="@(item.Count + 1)" class="btn btn-sm btn-link text-light p-0 px-2 text-decoration-none" title="Increase" @(item.Count >= stock ? "disabled" : "")>+</button>
+                                            <button type="submit" asp-action="Plus" asp-route-cartId="@item.Id" class="btn btn-sm btn-link text-light p-0 px-2 text-decoration-none" title="Increase" disabled="@(item.Count >= stock ? "disabled" : null)">+</button>
                                         </form>
                                     </td>
                                     <td class="text-end fw-bold text-accent align-middle">₹@item.Price.ToString("N2")</td>
@@ -144,12 +144,20 @@ else
                         </div>
                     </form>
 
-                    <div class="small text-muted">
-                        Available Coupons: 
-                        <span class="badge bg-dark border border-secondary text-info cursor-pointer" onclick="document.querySelector('[name=couponCode]').value='WELCOME10'">WELCOME10</span>
-                        <span class="badge bg-dark border border-secondary text-info cursor-pointer" onclick="document.querySelector('[name=couponCode]').value='FLAT100'">FLAT100</span>
-                        <span class="badge bg-dark border border-secondary text-info cursor-pointer" onclick="document.querySelector('[name=couponCode]').value='BOOKWORM20'">BOOKWORM20</span>
-                    </div>
+                    @if (Model.AvailableCoupons.Any())
+                    {
+                        <div class="small text-muted">
+                            Available Coupons: 
+                            @foreach (var coupon in Model.AvailableCoupons)
+                            {
+                                <span class="badge bg-dark border border-secondary text-info cursor-pointer me-1 mb-1" 
+                                      title="@coupon.Description"
+                                      onclick="document.querySelector('[name=couponCode]').value='@coupon.Code'">
+                                    @coupon.Code
+                                </span>
+                            }
+                        </div>
+                    }
                 }
             </div>
 

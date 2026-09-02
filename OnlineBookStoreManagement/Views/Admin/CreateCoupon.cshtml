@@ -1,0 +1,130 @@
+@model OnlineBookStoreManagement.Models.Coupon
+@{
+    ViewData["Title"] = "Create Promotional Coupon";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="fw-bold text-white mb-1">
+                    <i class="bi bi-plus-circle text-primary me-2"></i> Create Promotional Coupon
+                </h2>
+                <p class="text-muted mb-0">Configure discount parameters, validity date range, minimum order requirements, and usage limit.</p>
+            </div>
+            <a asp-action="Coupons" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Coupons
+            </a>
+        </div>
+
+        <div class="card bg-card border-secondary shadow-lg">
+            <div class="card-body p-4">
+                <form asp-action="CreateCoupon" method="post" autocomplete="off">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4" role="alert"></div>
+
+                    <div class="row g-3">
+                        <!-- Coupon Code -->
+                        <div class="col-md-6">
+                            <label asp-for="Code" class="form-label text-light fw-semibold">Coupon Code <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-tag-fill"></i></span>
+                                <input asp-for="Code" class="form-control bg-dark border-secondary text-light font-monospace text-uppercase fw-bold" placeholder="e.g. FESTIVE20" required />
+                            </div>
+                            <span asp-validation-for="Code" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Discount Type -->
+                        <div class="col-md-6">
+                            <label asp-for="DiscountType" class="form-label text-light fw-semibold">Discount Type <span class="text-danger">*</span></label>
+                            <select asp-for="DiscountType" class="form-select bg-dark border-secondary text-light" required>
+                                <option value="Percentage">Percentage (%) Discount</option>
+                                <option value="Fixed">Fixed / Flat Amount (₹) Discount</option>
+                            </select>
+                            <span asp-validation-for="DiscountType" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-12">
+                            <label asp-for="Description" class="form-label text-light fw-semibold">Description <span class="text-danger">*</span></label>
+                            <input asp-for="Description" class="form-control bg-dark border-secondary text-light" placeholder="e.g. 20% discount on orders above ₹500" required />
+                            <span asp-validation-for="Description" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Discount Value -->
+                        <div class="col-md-6">
+                            <label asp-for="DiscountValue" class="form-label text-light fw-semibold">Discount Value <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-percent"></i></span>
+                                <input asp-for="DiscountValue" type="number" step="0.01" min="0.01" class="form-control bg-dark border-secondary text-light" placeholder="e.g. 20 or 100" required />
+                            </div>
+                            <span asp-validation-for="DiscountValue" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Max Discount Amount (Optional for Percentage) -->
+                        <div class="col-md-6">
+                            <label asp-for="MaximumDiscountAmount" class="form-label text-light fw-semibold">Max Discount Cap (₹) <small class="text-muted">(Optional)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-muted">₹</span>
+                                <input asp-for="MaximumDiscountAmount" type="number" step="0.01" min="0" class="form-control bg-dark border-secondary text-light" placeholder="e.g. 200 (For % cap)" />
+                            </div>
+                            <span asp-validation-for="MaximumDiscountAmount" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Minimum Order Amount -->
+                        <div class="col-md-6">
+                            <label asp-for="MinimumOrderAmount" class="form-label text-light fw-semibold">Minimum Order Value (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-muted">₹</span>
+                                <input asp-for="MinimumOrderAmount" type="number" step="0.01" min="0" class="form-control bg-dark border-secondary text-light" placeholder="0.00" />
+                            </div>
+                            <span asp-validation-for="MinimumOrderAmount" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Usage Limit -->
+                        <div class="col-md-6">
+                            <label asp-for="UsageLimit" class="form-label text-light fw-semibold">Usage Limit <small class="text-muted">(Optional - Blank for unlimited)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-people"></i></span>
+                                <input asp-for="UsageLimit" type="number" min="1" class="form-control bg-dark border-secondary text-light" placeholder="e.g. 100 uses" />
+                            </div>
+                            <span asp-validation-for="UsageLimit" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Validity Start Date -->
+                        <div class="col-md-6">
+                            <label asp-for="StartDate" class="form-label text-light fw-semibold">Validity Start Date <small class="text-muted">(Optional)</small></label>
+                            <input asp-for="StartDate" type="datetime-local" class="form-control bg-dark border-secondary text-light" />
+                            <span asp-validation-for="StartDate" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Validity Expiry Date -->
+                        <div class="col-md-6">
+                            <label asp-for="ExpiryDate" class="form-label text-light fw-semibold">Validity Expiry Date <small class="text-muted">(Optional)</small></label>
+                            <input asp-for="ExpiryDate" type="datetime-local" class="form-control bg-dark border-secondary text-light" />
+                            <span asp-validation-for="ExpiryDate" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Is Active Checkbox -->
+                        <div class="col-12 mt-3">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" checked />
+                                <label class="form-check-label text-light fw-semibold ms-2" for="isActiveSwitch">
+                                    Set Coupon Active Immediately
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-secondary my-4" />
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="Coupons" class="btn btn-outline-secondary px-4">Cancel</a>
+                        <button type="submit" class="btn btn-primary-gradient px-4 fw-bold">
+                            <i class="bi bi-check-circle me-1"></i> Save Promotional Coupon
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (data.options && data.options.length > 0) {
             htmlContent += `<div class="chat-options-container">`;
             data.options.forEach(opt => {
-                const iconClass = opt.icon || 'bi-chat-text';
+                const iconClass = escapeHtml(opt.icon || 'bi-chat-text');
                 htmlContent += `
                     <button type="button" class="chat-option-chip" data-value="${escapeHtml(opt.value)}">
                         <i class="bi ${iconClass}"></i> ${escapeHtml(opt.label)}

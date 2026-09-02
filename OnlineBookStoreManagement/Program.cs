@@ -1,5 +1,7 @@
 
 
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Localization;
@@ -100,6 +102,17 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+app.UseStatusCodePagesWithRedirects("/Home/Error?statusCode={0}");
+
+// Security Headers Middleware
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    await next();
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

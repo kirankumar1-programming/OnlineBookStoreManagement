@@ -316,6 +316,91 @@ namespace OnlineBookStoreManagement.Tests
 
             // Verify cart cleared
             Assert.Equal(0, await db.ShoppingCartItems.CountAsync(c => c.UserId == "user-1"));
+
+            // Verify Coupon TimesUsed was incremented (WELCOME10 TimesUsed = 1)
+            var appliedCouponEntity = await db.Coupons.FirstOrDefaultAsync(c => c.Code == "WELCOME10");
+            Assert.NotNull(appliedCouponEntity);
+            Assert.Equal(1, appliedCouponEntity.TimesUsed);
+        }
+
+        [Fact]
+        public async Task ApplyCoupon_ValidatesStartDate_ExpiryDate_AndUsageLimit()
+        {
+            using var db = await GetDatabaseContextAsync();
+
+            // Seed special condition coupons
+            var futureCoupon = new Coupon
+            {
+                Id = 10,
+                Code = "FUTURE50",
+                Description = "Future Coupon",
+                DiscountType = "Fixed",
+                DiscountValue = 50m,
+                StartDate = DateTime.UtcNow.AddDays(2),
+                ExpiryDate = DateTime.UtcNow.AddDays(10),
+                IsActive = true
+            };
+
+            var expiredCoupon = new Coupon
+            {
+                Id = 11,
+                Code = "EXPIRED50",
+                Description = "Expired Coupon",
+                DiscountType = "Fixed",
+                DiscountValue = 50m,
+                StartDate = DateTime.UtcNow.AddDays(-10),
+                ExpiryDate = DateTime.UtcNow.AddDays(-1),
+                IsActive = true
+            };
+
+            var maxedOutCoupon = new Coupon
+            {
+                Id = 12,
+                Code = "MAXEDOUT",
+                Description = "Maxed Coupon",
+                DiscountType = "Percentage",
+                DiscountValue = 15m,
+                UsageLimit = 2,
+                TimesUsed = 2,
+                IsActive = true
+            };
+
+            db.Coupons.AddRange(futureCoupon, expiredCoupon, maxedOutCoupon);
+            await db.SaveChangesAsync();
+
+            // Add Book 1 to cart
+            db.ShoppingCartItems.Add(new ShoppingCartItem { UserId = "user-1", BookId = 1, Count = 1 });
+            await db.SaveChangesAsync();
+
+            var users = await db.Users.ToListAsync();
+            var userManager = new UserManager<ApplicationUser>(new TestUserStore(users), null!, null!, null!, null!, null!, null!, null!, null!);
+            var controller = new CartController(db, userManager, new TestEmailSender(), NullLogger<CartController>.Instance)
+            {
+                ControllerContext = GetMockControllerContext(),
+                TempData = new TempDataDictionary(new DefaultHttpContext(), new DummyTempDataProvider())
+            };
+
+            // 1. Attempt Future coupon -> Should fail to apply
+            await controller.ApplyCoupon("FUTURE50");
+            Assert.Null(controller.HttpContext.Session.GetString("AppliedCouponCode"));
+
+            // 2. Attempt Expired coupon -> Should fail to apply
+            await controller.ApplyCoupon("EXPIRED50");
+            Assert.Null(controller.HttpContext.Session.GetString("AppliedCouponCode"));
+
+            // 3. Attempt Maxed out coupon -> Should fail to apply
+            await controller.ApplyCoupon("MAXEDOUT");
+            Assert.Null(controller.HttpContext.Session.GetString("AppliedCouponCode"));
+
+            // 4. Verify Index action populates AvailableCoupons filtering out inactive, expired, future & maxed out coupons
+            var indexResult = await controller.Index();
+            var viewResult = Assert.IsType<ViewResult>(indexResult);
+            var vm = Assert.IsType<ShoppingCartViewModel>(viewResult.Model);
+
+            Assert.DoesNotContain(vm.AvailableCoupons, c => c.Code == "FUTURE50");
+            Assert.DoesNotContain(vm.AvailableCoupons, c => c.Code == "EXPIRED50");
+            Assert.DoesNotContain(vm.AvailableCoupons, c => c.Code == "MAXEDOUT");
+            Assert.Contains(vm.AvailableCoupons, c => c.Code == "WELCOME10");
         }
     }
 }

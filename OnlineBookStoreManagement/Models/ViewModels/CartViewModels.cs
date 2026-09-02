@@ -11,6 +11,7 @@ namespace OnlineBookStoreManagement.Models.ViewModels
         public string? CouponSuccessMessage { get; set; }
 
         public List<string> StockValidationErrors { get; set; } = new List<string>();
+        public List<Coupon> AvailableCoupons { get; set; } = new List<Coupon>();
 
         public decimal SubTotal => CartItems.Sum(i => i.Price);
         public decimal SubTotalAfterDiscount => Math.Max(0m, SubTotal - DiscountAmount);

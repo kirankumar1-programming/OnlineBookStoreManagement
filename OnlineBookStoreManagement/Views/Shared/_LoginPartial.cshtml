@@ -59,6 +59,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["action"]?.ToString() == "Coupons" ? "active" : "") text-success" asp-controller="Admin" asp-action="Coupons">
+                    <i class="bi bi-ticket-perforated me-1"></i> Coupons
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["action"]?.ToString() == "LowStockDigest" ? "active" : "") text-danger" asp-controller="Admin" asp-action="LowStockDigest">
                     <i class="bi bi-bell me-1"></i> Stock Digest
                     @if (lowStockAlertCount > 0)
@@ -120,6 +125,11 @@
                     <li>
                         <a class="dropdown-item py-2 fw-semibold text-primary" asp-controller="Books" asp-action="Index">
                             <i class="bi bi-book me-2"></i> Manage Books &amp; Inventory
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-semibold text-success" asp-controller="Admin" asp-action="Coupons">
+                            <i class="bi bi-ticket-perforated me-2"></i> Manage Promotional Coupons
                         </a>
                     </li>
                     <li>

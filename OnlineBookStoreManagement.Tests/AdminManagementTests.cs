@@ -134,6 +134,7 @@ namespace OnlineBookStoreManagement.Tests
         private class TestUserStore : IUserRoleStore<ApplicationUser>
         {
             private readonly List<ApplicationUser> _users;
+            private readonly Dictionary<string, List<string>> _userRoles = new();
 
             public TestUserStore(List<ApplicationUser>? users = null)
             {
@@ -153,23 +154,35 @@ namespace OnlineBookStoreManagement.Tests
             public Task<ApplicationUser?> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken) => Task.FromResult(_users.FirstOrDefault(u => (u.UserName ?? "").Equals(normalizedUserName, StringComparison.OrdinalIgnoreCase)));
 
             // IUserRoleStore implementation
-            public Task AddToRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken) => Task.CompletedTask;
-            public Task RemoveFromRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task AddToRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken)
+            {
+                if (!_userRoles.ContainsKey(user.Id)) _userRoles[user.Id] = new List<string>();
+                if (!_userRoles[user.Id].Contains(roleName)) _userRoles[user.Id].Add(roleName);
+                return Task.CompletedTask;
+            }
+            public Task RemoveFromRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken)
+            {
+                if (_userRoles.ContainsKey(user.Id)) _userRoles[user.Id].Remove(roleName);
+                return Task.CompletedTask;
+            }
             public Task<IList<string>> GetRolesAsync(ApplicationUser user, CancellationToken cancellationToken)
             {
-                IList<string> roles = user.Email != null && user.Email.Contains("admin")
-                    ? new List<string> { "Admin" }
-                    : new List<string> { "Customer" };
-                return Task.FromResult(roles);
+                if (!_userRoles.ContainsKey(user.Id))
+                {
+                    _userRoles[user.Id] = (user.Id == "admin-1" || (user.Email != null && user.Email.Equals("admin@bookstore.com", StringComparison.OrdinalIgnoreCase)))
+                        ? new List<string> { "Admin" }
+                        : new List<string> { "Customer" };
+                }
+                return Task.FromResult<IList<string>>(_userRoles[user.Id]);
             }
             public Task<bool> IsInRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken)
             {
-                bool inRole = roleName == "Admin" && (user.Email != null && user.Email.Contains("admin"));
-                return Task.FromResult(inRole);
+                var roles = GetRolesAsync(user, cancellationToken).Result;
+                return Task.FromResult(roles.Contains(roleName));
             }
             public Task<IList<ApplicationUser>> GetUsersInRoleAsync(string roleName, CancellationToken cancellationToken)
             {
-                IList<ApplicationUser> list = _users.Where(u => roleName == "Admin" && u.Email != null && u.Email.Contains("admin")).ToList();
+                IList<ApplicationUser> list = _users.Where(u => IsInRoleAsync(u, roleName, cancellationToken).Result).ToList();
                 return Task.FromResult(list);
             }
         }
@@ -346,6 +359,219 @@ namespace OnlineBookStoreManagement.Tests
             Assert.NotEmpty(vm.TopSellingBooks.Labels);
             Assert.NotEmpty(vm.CategoryRevenue.Labels);
             Assert.Equal("Clean Architecture", vm.TopSellingBooks.Labels.First()); // Best selling book title
+        }
+
+        [Fact]
+        public async Task Admin_CanCreateCoupons_AndRejectsDuplicateCode()
+        {
+            using var db = await GetDatabaseContextAsync();
+
+            var users = await db.Users.ToListAsync();
+            var userManager = new UserManager<ApplicationUser>(new TestUserStore(users), null!, null!, null!, null!, null!, null!, null!, null!);
+            var roleManager = new RoleManager<IdentityRole>(new TestRoleStore(), null!, null!, null!, null!);
+
+            var controller = new AdminController(
+                userManager,
+                roleManager,
+                db,
+                new TestEmailSender(),
+                Options.Create(new SmtpSettings()),
+                new TestLowStockDigestService(),
+                new TestPdfGenerator())
+            {
+                ControllerContext = GetMockAdminControllerContext(),
+                TempData = new TempDataDictionary(new DefaultHttpContext(), new DummyTempDataProvider())
+            };
+
+            // 1. Create a valid coupon (e.g. FESTIVE25)
+            var newCoupon = new Coupon
+            {
+                Code = "festive25",
+                Description = "25% discount on all orders",
+                DiscountType = "Percentage",
+                DiscountValue = 25m,
+                MinimumOrderAmount = 400m,
+                StartDate = DateTime.UtcNow.AddDays(-1),
+                ExpiryDate = DateTime.UtcNow.AddDays(30),
+                UsageLimit = 10,
+                IsActive = true
+            };
+
+            var createResult = await controller.CreateCoupon(newCoupon);
+            var redirectResult = Assert.IsType<RedirectToActionResult>(createResult);
+            Assert.Equal("Coupons", redirectResult.ActionName);
+
+            var savedCoupon = await db.Coupons.FirstOrDefaultAsync(c => c.Code == "FESTIVE25");
+            Assert.NotNull(savedCoupon);
+            Assert.Equal("FESTIVE25", savedCoupon.Code); // Upper-cased automatically
+            Assert.Equal(25m, savedCoupon.DiscountValue);
+            Assert.Equal(10, savedCoupon.UsageLimit);
+
+            // 2. Attempt creating duplicate coupon with same code -> should fail with ModelState error
+            var duplicateCoupon = new Coupon
+            {
+                Code = "FESTIVE25",
+                Description = "Duplicate test",
+                DiscountType = "Fixed",
+                DiscountValue = 100m
+            };
+
+            var dupResult = await controller.CreateCoupon(duplicateCoupon);
+            var viewResult = Assert.IsType<ViewResult>(dupResult);
+            Assert.False(controller.ModelState.IsValid);
+            Assert.True(controller.ModelState.ContainsKey("Code"));
+        }
+
+        [Fact]
+        public async Task Admin_CanEditCoupon_AndToggleStatus_AndDeleteCoupon()
+        {
+            using var db = await GetDatabaseContextAsync();
+
+            var users = await db.Users.ToListAsync();
+            var userManager = new UserManager<ApplicationUser>(new TestUserStore(users), null!, null!, null!, null!, null!, null!, null!, null!);
+            var roleManager = new RoleManager<IdentityRole>(new TestRoleStore(), null!, null!, null!, null!);
+
+            var controller = new AdminController(
+                userManager,
+                roleManager,
+                db,
+                new TestEmailSender(),
+                Options.Create(new SmtpSettings()),
+                new TestLowStockDigestService(),
+                new TestPdfGenerator())
+            {
+                ControllerContext = GetMockAdminControllerContext(),
+                TempData = new TempDataDictionary(new DefaultHttpContext(), new DummyTempDataProvider())
+            };
+
+            // Seed an initial coupon
+            var coupon = new Coupon
+            {
+                Code = "SUMMER100",
+                Description = "Flat ₹100 Off",
+                DiscountType = "Fixed",
+                DiscountValue = 100m,
+                MinimumOrderAmount = 500m,
+                IsActive = true
+            };
+            db.Coupons.Add(coupon);
+            await db.SaveChangesAsync();
+
+            // 1. Toggle Status -> Should set IsActive = false
+            await controller.ToggleCouponStatus(coupon.Id);
+            var toggledCoupon = await db.Coupons.FindAsync(coupon.Id);
+            Assert.NotNull(toggledCoupon);
+            Assert.False(toggledCoupon.IsActive);
+
+            // 2. Edit Coupon -> Update DiscountValue to 150
+            toggledCoupon.DiscountValue = 150m;
+            toggledCoupon.IsActive = true;
+            var editResult = await controller.EditCoupon(toggledCoupon.Id, toggledCoupon);
+            Assert.IsType<RedirectToActionResult>(editResult);
+
+            var updatedCoupon = await db.Coupons.FindAsync(coupon.Id);
+            Assert.NotNull(updatedCoupon);
+            Assert.Equal(150m, updatedCoupon.DiscountValue);
+            Assert.True(updatedCoupon.IsActive);
+
+            // 3. Delete Coupon
+            var deleteResult = await controller.DeleteCouponConfirmed(coupon.Id);
+            Assert.IsType<RedirectToActionResult>(deleteResult);
+            Assert.Null(await db.Coupons.FindAsync(coupon.Id));
+        }
+
+        [Fact]
+        public async Task Account_Login_UserWithAdminSubstring_IsNotPromotedToAdminRole()
+        {
+            using var db = await GetDatabaseContextAsync();
+            var normalUserWithAdminInEmail = new ApplicationUser
+            {
+                Id = "user-admin-email",
+                UserName = "fake_admin@gmail.com",
+                Email = "fake_admin@gmail.com",
+                FullName = "Fake Admin"
+            };
+            db.Users.Add(normalUserWithAdminInEmail);
+            await db.SaveChangesAsync();
+
+            var users = await db.Users.ToListAsync();
+            var userManager = new UserManager<ApplicationUser>(new TestUserStore(users), null!, null!, null!, null!, null!, null!, null!, null!);
+
+            // Verify that fake_admin@gmail.com is NOT in Admin role
+            Assert.False(await userManager.IsInRoleAsync(normalUserWithAdminInEmail, "Admin"));
+        }
+
+        [Fact]
+        public async Task Home_AddReview_ValidatesRatingAndCommentServerSide()
+        {
+            using var db = await GetDatabaseContextAsync();
+            var users = await db.Users.ToListAsync();
+            var userManager = new UserManager<ApplicationUser>(new TestUserStore(users), null!, null!, null!, null!, null!, null!, null!, null!);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, "cust-1"),
+                new Claim(ClaimTypes.Name, "customer@test.com")
+            };
+            var identity = new ClaimsIdentity(claims, "TestAuthType");
+            var controller = new HomeController(db, userManager)
+            {
+                ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } },
+                TempData = new TempDataDictionary(new DefaultHttpContext(), new DummyTempDataProvider())
+            };
+
+            // 1. Submit invalid rating (e.g. 10) -> Should fail validation
+            var invalidRatingResult = await controller.AddReview(bookId: 1, rating: 10, comment: "Great book!");
+            Assert.IsType<RedirectToActionResult>(invalidRatingResult);
+            Assert.Equal("Please select a valid rating between 1 and 5 stars.", controller.TempData["ErrorMessage"]);
+
+            // 2. Submit empty comment -> Should fail validation
+            var emptyCommentResult = await controller.AddReview(bookId: 1, rating: 5, comment: "   ");
+            Assert.IsType<RedirectToActionResult>(emptyCommentResult);
+            Assert.Equal("Please enter a valid review comment.", controller.TempData["ErrorMessage"]);
+
+            // 3. Submit valid review -> Should succeed
+            var validResult = await controller.AddReview(bookId: 1, rating: 5, comment: "Excellent architecture principles.");
+            Assert.IsType<RedirectToActionResult>(validResult);
+            Assert.Equal("Thank you! Your review and rating have been posted.", controller.TempData["SuccessMessage"]);
+        }
+
+        [Fact]
+        public async Task Chatbot_HandleOrderTracking_EnforcesOwnershipAndPreventsIDOR()
+        {
+            using var db = await GetDatabaseContextAsync();
+            var users = await db.Users.ToListAsync();
+            var userManager = new UserManager<ApplicationUser>(new TestUserStore(users), null!, null!, null!, null!, null!, null!, null!, null!);
+
+            var chatbotController = new ChatbotController(db, userManager);
+
+            // User A ("cust-1") owns Order #1 in DB (seeded in GetDatabaseContextAsync)
+            // 1. Unauthenticated user requests Order #1 -> Should be rejected with sign-in prompt
+            var unauthClaims = new ClaimsIdentity();
+            chatbotController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(unauthClaims) } };
+
+            var unauthResult = await chatbotController.Query(new ChatRequestDto { Message = "track order 1" });
+            var okUnauth = Assert.IsType<OkObjectResult>(unauthResult);
+            var dtoUnauth = Assert.IsType<ChatResponseDto>(okUnauth.Value);
+            Assert.Contains("sign in", dtoUnauth.Reply, StringComparison.OrdinalIgnoreCase);
+
+            // 2. User B ("other-user-2") requests Order #1 -> Should be rejected (IDOR blocked)
+            var userBClaims = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "other-user-2") }, "TestAuth");
+            chatbotController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(userBClaims) } };
+
+            var userBResult = await chatbotController.Query(new ChatRequestDto { Message = "track order 1" });
+            var okUserB = Assert.IsType<OkObjectResult>(userBResult);
+            var dtoUserB = Assert.IsType<ChatResponseDto>(okUserB.Value);
+            Assert.Contains("do not have permission", dtoUserB.Reply, StringComparison.OrdinalIgnoreCase);
+
+            // 3. Owner ("cust-1") requests Order #1 -> Should succeed and return details
+            var ownerClaims = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "cust-1") }, "TestAuth");
+            chatbotController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(ownerClaims) } };
+
+            var ownerResult = await chatbotController.Query(new ChatRequestDto { Message = "track order 1" });
+            var okOwner = Assert.IsType<OkObjectResult>(ownerResult);
+            var dtoOwner = Assert.IsType<ChatResponseDto>(okOwner.Value);
+            Assert.Contains("Order #1 Details", dtoOwner.Reply);
         }
     }
 }

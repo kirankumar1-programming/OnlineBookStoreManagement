@@ -10,7 +10,7 @@ using OnlineBookStoreManagement.Services;
 
 namespace OnlineBookStoreManagement.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = DbInitializer.Role_Admin)]
     public class AdminController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -41,18 +41,12 @@ namespace OnlineBookStoreManagement.Controllers
 
         private async Task<bool> CheckAdminAccessAsync()
         {
-            if (User.IsInRole("Admin") || User.IsInRole("Administrator")) return true;
+            if (User.IsInRole(DbInitializer.Role_Admin) || User.IsInRole("Administrator")) return true;
 
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return false;
 
-            if (await _userManager.IsInRoleAsync(user, "Admin") || await _userManager.IsInRoleAsync(user, "Administrator")) return true;
-
-            if (!string.IsNullOrEmpty(user.Email) && user.Email.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
-            if (!string.IsNullOrEmpty(user.UserName) && user.UserName.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
-            if (!string.IsNullOrEmpty(user.FullName) && user.FullName.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
-
-            return false;
+            return await _userManager.IsInRoleAsync(user, DbInitializer.Role_Admin) || await _userManager.IsInRoleAsync(user, "Administrator");
         }
 
         // GET: /Admin
@@ -410,6 +404,205 @@ namespace OnlineBookStoreManagement.Controllers
             }
 
             return RedirectToAction(nameof(LowStockDigest), new { threshold });
+        }
+
+        // ==================== COUPON MANAGEMENT ACTIONS ====================
+
+        // GET: /Admin/Coupons
+        public async Task<IActionResult> Coupons()
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            var coupons = await _db.Coupons
+                .OrderByDescending(c => c.Id)
+                .ToListAsync();
+
+            return View(coupons);
+        }
+
+        // GET: /Admin/CreateCoupon
+        public async Task<IActionResult> CreateCoupon()
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            return View(new Coupon { IsActive = true, MinimumOrderAmount = 0m });
+        }
+
+        // POST: /Admin/CreateCoupon
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateCoupon(Coupon coupon)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            coupon.Code = coupon.Code?.Trim().ToUpper() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(coupon.Code))
+            {
+                ModelState.AddModelError("Code", "Coupon Code is required.");
+            }
+            else if (await _db.Coupons.AnyAsync(c => c.Code.ToUpper() == coupon.Code))
+            {
+                ModelState.AddModelError("Code", $"A coupon with code '{coupon.Code}' already exists.");
+            }
+
+            if (coupon.DiscountValue <= 0)
+            {
+                ModelState.AddModelError("DiscountValue", "Discount Value must be greater than zero.");
+            }
+
+            if (coupon.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase) && coupon.DiscountValue > 100)
+            {
+                ModelState.AddModelError("DiscountValue", "Percentage discount cannot exceed 100%.");
+            }
+
+            if (coupon.MinimumOrderAmount < 0)
+            {
+                ModelState.AddModelError("MinimumOrderAmount", "Minimum Order Amount cannot be negative.");
+            }
+
+            if (coupon.StartDate.HasValue && coupon.ExpiryDate.HasValue && coupon.ExpiryDate.Value < coupon.StartDate.Value)
+            {
+                ModelState.AddModelError("ExpiryDate", "Expiry date must be on or after start date.");
+            }
+
+            if (coupon.UsageLimit.HasValue && coupon.UsageLimit.Value < 1)
+            {
+                ModelState.AddModelError("UsageLimit", "Usage limit must be at least 1.");
+            }
+
+            if (ModelState.IsValid)
+            {
+                _db.Coupons.Add(coupon);
+                await _db.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"Promotional coupon '{coupon.Code}' created successfully!";
+                return RedirectToAction(nameof(Coupons));
+            }
+
+            return View(coupon);
+        }
+
+        // GET: /Admin/EditCoupon/5
+        public async Task<IActionResult> EditCoupon(int? id)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+            if (id == null) return NotFound();
+
+            var coupon = await _db.Coupons.FindAsync(id);
+            if (coupon == null) return NotFound();
+
+            return View(coupon);
+        }
+
+        // POST: /Admin/EditCoupon/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditCoupon(int id, Coupon coupon)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+            if (id != coupon.Id) return NotFound();
+
+            coupon.Code = coupon.Code?.Trim().ToUpper() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(coupon.Code))
+            {
+                ModelState.AddModelError("Code", "Coupon Code is required.");
+            }
+            else if (await _db.Coupons.AnyAsync(c => c.Code.ToUpper() == coupon.Code && c.Id != coupon.Id))
+            {
+                ModelState.AddModelError("Code", $"Another coupon with code '{coupon.Code}' already exists.");
+            }
+
+            if (coupon.DiscountValue <= 0)
+            {
+                ModelState.AddModelError("DiscountValue", "Discount Value must be greater than zero.");
+            }
+
+            if (coupon.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase) && coupon.DiscountValue > 100)
+            {
+                ModelState.AddModelError("DiscountValue", "Percentage discount cannot exceed 100%.");
+            }
+
+            if (coupon.MinimumOrderAmount < 0)
+            {
+                ModelState.AddModelError("MinimumOrderAmount", "Minimum Order Amount cannot be negative.");
+            }
+
+            if (coupon.StartDate.HasValue && coupon.ExpiryDate.HasValue && coupon.ExpiryDate.Value < coupon.StartDate.Value)
+            {
+                ModelState.AddModelError("ExpiryDate", "Expiry date must be on or after start date.");
+            }
+
+            if (coupon.UsageLimit.HasValue && coupon.UsageLimit.Value < 1)
+            {
+                ModelState.AddModelError("UsageLimit", "Usage limit must be at least 1.");
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _db.Update(coupon);
+                    await _db.SaveChangesAsync();
+                    TempData["SuccessMessage"] = $"Promotional coupon '{coupon.Code}' updated successfully!";
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!await _db.Coupons.AnyAsync(c => c.Id == coupon.Id)) return NotFound();
+                    else throw;
+                }
+                return RedirectToAction(nameof(Coupons));
+            }
+
+            return View(coupon);
+        }
+
+        // GET: /Admin/DeleteCoupon/5
+        public async Task<IActionResult> DeleteCoupon(int? id)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+            if (id == null) return NotFound();
+
+            var coupon = await _db.Coupons.FindAsync(id);
+            if (coupon == null) return NotFound();
+
+            return View(coupon);
+        }
+
+        // POST: /Admin/DeleteCoupon/5
+        [HttpPost, ActionName("DeleteCoupon")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteCouponConfirmed(int id)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            var coupon = await _db.Coupons.FindAsync(id);
+            if (coupon != null)
+            {
+                _db.Coupons.Remove(coupon);
+                await _db.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"Coupon '{coupon.Code}' deleted successfully!";
+            }
+
+            return RedirectToAction(nameof(Coupons));
+        }
+
+        // POST: /Admin/ToggleCouponStatus
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleCouponStatus(int id)
+        {
+            if (!await CheckAdminAccessAsync()) return RedirectToAction("AccessDenied", "Account");
+
+            var coupon = await _db.Coupons.FindAsync(id);
+            if (coupon != null)
+            {
+                coupon.IsActive = !coupon.IsActive;
+                await _db.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"Coupon '{coupon.Code}' status set to {(coupon.IsActive ? "Active" : "Inactive")}.";
+            }
+
+            return RedirectToAction(nameof(Coupons));
         }
     }
 }

@@ -34,7 +34,13 @@ namespace OnlineBookStoreManagement.Controllers
             if (!coupon.IsActive || subtotal < coupon.MinimumOrderAmount)
                 return 0m;
 
+            if (coupon.StartDate.HasValue && coupon.StartDate.Value > DateTime.UtcNow)
+                return 0m;
+
             if (coupon.ExpiryDate.HasValue && coupon.ExpiryDate.Value < DateTime.UtcNow)
+                return 0m;
+
+            if (coupon.UsageLimit.HasValue && coupon.TimesUsed >= coupon.UsageLimit.Value)
                 return 0m;
 
             decimal discount = 0m;
@@ -46,7 +52,7 @@ namespace OnlineBookStoreManagement.Controllers
                     discount = coupon.MaximumDiscountAmount.Value;
                 }
             }
-            else if (coupon.DiscountType.Equals("Flat", StringComparison.OrdinalIgnoreCase))
+            else if (coupon.DiscountType.Equals("Flat", StringComparison.OrdinalIgnoreCase) || coupon.DiscountType.Equals("Fixed", StringComparison.OrdinalIgnoreCase))
             {
                 discount = Math.Min(subtotal, coupon.DiscountValue);
             }
@@ -66,10 +72,22 @@ namespace OnlineBookStoreManagement.Controllers
                 return (null, 0m, "Previously applied coupon is no longer active.");
             }
 
+            if (coupon.StartDate.HasValue && coupon.StartDate.Value > DateTime.UtcNow)
+            {
+                HttpContext.Session.Remove(SessionCouponKey);
+                return (null, 0m, $"Coupon '{coupon.Code}' is not active until {coupon.StartDate.Value:yyyy-MM-dd}.");
+            }
+
             if (coupon.ExpiryDate.HasValue && coupon.ExpiryDate.Value < DateTime.UtcNow)
             {
                 HttpContext.Session.Remove(SessionCouponKey);
                 return (null, 0m, $"Coupon '{coupon.Code}' has expired.");
+            }
+
+            if (coupon.UsageLimit.HasValue && coupon.TimesUsed >= coupon.UsageLimit.Value)
+            {
+                HttpContext.Session.Remove(SessionCouponKey);
+                return (null, 0m, $"Coupon '{coupon.Code}' has reached its maximum usage limit.");
             }
 
             if (subtotal < coupon.MinimumOrderAmount)
@@ -98,6 +116,18 @@ namespace OnlineBookStoreManagement.Controllers
             return errors;
         }
 
+        private async Task<List<Coupon>> GetAvailableCouponsAsync()
+        {
+            var now = DateTime.UtcNow;
+            return await _db.Coupons
+                .Where(c => c.IsActive
+                    && (!c.StartDate.HasValue || c.StartDate.Value <= now)
+                    && (!c.ExpiryDate.HasValue || c.ExpiryDate.Value >= now)
+                    && (!c.UsageLimit.HasValue || c.TimesUsed < c.UsageLimit.Value))
+                .OrderBy(c => c.Code)
+                .ToListAsync();
+        }
+
         // GET: /Cart
         public async Task<IActionResult> Index()
         {
@@ -116,7 +146,8 @@ namespace OnlineBookStoreManagement.Controllers
             var viewModel = new ShoppingCartViewModel
             {
                 CartItems = cartItems,
-                StockValidationErrors = ValidateCartStock(cartItems)
+                StockValidationErrors = ValidateCartStock(cartItems),
+                AvailableCoupons = await GetAvailableCouponsAsync()
             };
 
             var (appliedCode, discountAmount, couponInfo) = await ProcessSessionCouponAsync(viewModel.SubTotal);
@@ -240,6 +271,7 @@ namespace OnlineBookStoreManagement.Controllers
                 {
                     cartItem.Count += 1;
                     await _db.SaveChangesAsync();
+                    TempData["SuccessMessage"] = $"Updated quantity for \"{cartItem.Book.Title}\" to {cartItem.Count}.";
                 }
                 else
                 {
@@ -255,16 +287,18 @@ namespace OnlineBookStoreManagement.Controllers
         public async Task<IActionResult> Minus(int cartId)
         {
             var userId = GetUserId();
-            var cartItem = await _db.ShoppingCartItems.FirstOrDefaultAsync(c => c.Id == cartId && c.UserId == userId);
-            if (cartItem != null)
+            var cartItem = await _db.ShoppingCartItems.Include(c => c.Book).FirstOrDefaultAsync(c => c.Id == cartId && c.UserId == userId);
+            if (cartItem != null && cartItem.Book != null)
             {
                 if (cartItem.Count <= 1)
                 {
                     _db.ShoppingCartItems.Remove(cartItem);
+                    TempData["SuccessMessage"] = $"\"{cartItem.Book.Title}\" removed from cart.";
                 }
                 else
                 {
                     cartItem.Count -= 1;
+                    TempData["SuccessMessage"] = $"Updated quantity for \"{cartItem.Book.Title}\" to {cartItem.Count}.";
                 }
                 await _db.SaveChangesAsync();
             }
@@ -313,9 +347,21 @@ namespace OnlineBookStoreManagement.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            if (coupon.StartDate.HasValue && coupon.StartDate.Value > DateTime.UtcNow)
+            {
+                TempData["ErrorMessage"] = $"Coupon code '{couponCode}' is not valid until {coupon.StartDate.Value:yyyy-MM-dd}.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (coupon.ExpiryDate.HasValue && coupon.ExpiryDate.Value < DateTime.UtcNow)
             {
                 TempData["ErrorMessage"] = $"Coupon code '{couponCode}' has expired.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (coupon.UsageLimit.HasValue && coupon.TimesUsed >= coupon.UsageLimit.Value)
+            {
+                TempData["ErrorMessage"] = $"Coupon code '{couponCode}' has reached its maximum usage limit.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -515,6 +561,16 @@ namespace OnlineBookStoreManagement.Controllers
                             _logger.LogWarning("LOW-STOCK ALERT: Book '{Title}' (ID: {BookId}) stock dropped to {StockQuantity} units (< 5 units) after Order #{OrderId}.",
                                 item.Book.Title, item.Book.Id, item.Book.StockQuantity, orderHeader.Id);
                         }
+                    }
+                }
+
+                // Increment Coupon TimesUsed count if applicable
+                if (!string.IsNullOrWhiteSpace(appliedCoupon))
+                {
+                    var couponEntity = await _db.Coupons.FirstOrDefaultAsync(c => c.Code.ToUpper() == appliedCoupon.ToUpper());
+                    if (couponEntity != null)
+                    {
+                        couponEntity.TimesUsed += 1;
                     }
                 }
 

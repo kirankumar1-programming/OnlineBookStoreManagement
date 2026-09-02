@@ -245,7 +245,7 @@ namespace OnlineBookStoreManagement.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddReview(int bookId, int rating, string comment)
+        public async Task<IActionResult> AddReview(int bookId, int rating, string? comment)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
@@ -257,12 +257,32 @@ namespace OnlineBookStoreManagement.Controllers
             var book = await _db.Books.FindAsync(bookId);
             if (book == null) return NotFound();
 
+            // Server-side validation: Rating must be between 1 and 5 stars
+            if (rating < 1 || rating > 5)
+            {
+                TempData["ErrorMessage"] = "Please select a valid rating between 1 and 5 stars.";
+                return RedirectToAction(nameof(Details), new { id = bookId });
+            }
+
+            // Server-side validation: Comment required and limited to 1000 characters
+            var sanitizedComment = comment?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(sanitizedComment))
+            {
+                TempData["ErrorMessage"] = "Please enter a valid review comment.";
+                return RedirectToAction(nameof(Details), new { id = bookId });
+            }
+
+            if (sanitizedComment.Length > 1000)
+            {
+                sanitizedComment = sanitizedComment.Substring(0, 1000);
+            }
+
             // Check if user already submitted a review for this book
             var existingReview = await _db.BookReviews.FirstOrDefaultAsync(r => r.BookId == bookId && r.UserId == userId);
             if (existingReview != null)
             {
                 existingReview.Rating = rating;
-                existingReview.Comment = comment;
+                existingReview.Comment = sanitizedComment;
                 existingReview.ReviewDate = DateTime.UtcNow;
                 _db.BookReviews.Update(existingReview);
                 TempData["SuccessMessage"] = "Your review has been updated!";
@@ -274,7 +294,7 @@ namespace OnlineBookStoreManagement.Controllers
                     BookId = bookId,
                     UserId = userId,
                     Rating = rating,
-                    Comment = comment,
+                    Comment = sanitizedComment,
                     ReviewDate = DateTime.UtcNow
                 };
                 await _db.BookReviews.AddAsync(newReview);
@@ -286,9 +306,33 @@ namespace OnlineBookStoreManagement.Controllers
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
+        public IActionResult Error(int? statusCode = null)
         {
-            return View(new Models.ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            var model = new Models.ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier };
+            if (statusCode.HasValue)
+            {
+                if (statusCode.Value == 404)
+                {
+                    ViewData["ErrorMessage"] = "The page or resource you requested could not be found.";
+                    ViewData["StatusCode"] = 404;
+                }
+                else if (statusCode.Value == 403)
+                {
+                    ViewData["ErrorMessage"] = "You do not have permission to access this resource.";
+                    ViewData["StatusCode"] = 403;
+                }
+                else
+                {
+                    ViewData["ErrorMessage"] = $"An unexpected error occurred (HTTP {statusCode.Value}).";
+                    ViewData["StatusCode"] = statusCode.Value;
+                }
+            }
+            else
+            {
+                ViewData["ErrorMessage"] = "An error occurred while processing your request.";
+                ViewData["StatusCode"] = 500;
+            }
+            return View(model);
         }
     }
 }

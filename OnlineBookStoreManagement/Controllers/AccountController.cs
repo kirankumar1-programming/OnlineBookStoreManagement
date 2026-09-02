@@ -112,14 +112,7 @@ namespace OnlineBookStoreManagement.Controllers
                     bool isAdmin = false;
                     if (user != null)
                     {
-                        isAdmin = await _userManager.IsInRoleAsync(user, DbInitializer.Role_Admin)
-                                  || (user.Email != null && user.Email.Contains("admin", StringComparison.OrdinalIgnoreCase))
-                                  || (user.UserName != null && user.UserName.Contains("admin", StringComparison.OrdinalIgnoreCase));
-
-                        if (isAdmin && !await _userManager.IsInRoleAsync(user, DbInitializer.Role_Admin))
-                        {
-                            await _userManager.AddToRoleAsync(user, DbInitializer.Role_Admin);
-                        }
+                        isAdmin = await _userManager.IsInRoleAsync(user, DbInitializer.Role_Admin);
                     }
 
                     if (isAdmin)

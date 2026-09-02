@@ -34,10 +34,31 @@ namespace OnlineBookStoreManagement.Data
                         ""MinimumOrderAmount"" TEXT NOT NULL,
                         ""MaximumDiscountAmount"" TEXT NULL,
                         ""IsActive"" INTEGER NOT NULL,
-                        ""ExpiryDate"" TEXT NULL
+                        ""StartDate"" TEXT NULL,
+                        ""ExpiryDate"" TEXT NULL,
+                        ""UsageLimit"" INTEGER NULL,
+                        ""TimesUsed"" INTEGER NOT NULL DEFAULT 0
                     );");
             }
             catch { /* Table already exists */ }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN StartDate TEXT NULL;");
+            }
+            catch { /* Column already exists */ }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN UsageLimit INTEGER NULL;");
+            }
+            catch { /* Column already exists */ }
+
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN TimesUsed INTEGER NOT NULL DEFAULT 0;");
+            }
+            catch { /* Column already exists */ }
 
             try
             {

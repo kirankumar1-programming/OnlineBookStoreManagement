@@ -8,7 +8,7 @@ using OnlineBookStoreManagement.Models;
 
 namespace OnlineBookStoreManagement.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = DbInitializer.Role_Admin)]
     public class BooksController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -22,18 +22,12 @@ namespace OnlineBookStoreManagement.Controllers
 
         private async Task<bool> CheckAdminAccessAsync()
         {
-            if (User.IsInRole("Admin") || User.IsInRole("Administrator")) return true;
+            if (User.IsInRole(DbInitializer.Role_Admin) || User.IsInRole("Administrator")) return true;
 
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return false;
 
-            if (await _userManager.IsInRoleAsync(user, "Admin") || await _userManager.IsInRoleAsync(user, "Administrator")) return true;
-
-            if (!string.IsNullOrEmpty(user.Email) && user.Email.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
-            if (!string.IsNullOrEmpty(user.UserName) && user.UserName.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
-            if (!string.IsNullOrEmpty(user.FullName) && user.FullName.Contains("admin", StringComparison.OrdinalIgnoreCase)) return true;
-
-            return false;
+            return await _userManager.IsInRoleAsync(user, DbInitializer.Role_Admin) || await _userManager.IsInRoleAsync(user, "Administrator");
         }
 
         // GET: /Books
@@ -68,6 +62,21 @@ namespace OnlineBookStoreManagement.Controllers
 
             ModelState.Remove("Category");
             ModelState.Remove("Reviews");
+
+            book.Title = book.Title?.Trim() ?? string.Empty;
+            book.Author = book.Author?.Trim() ?? string.Empty;
+            book.ISBN = book.ISBN?.Trim() ?? string.Empty;
+            book.Description = book.Description?.Trim() ?? string.Empty;
+            book.CoverImageUrl = book.CoverImageUrl?.Trim() ?? string.Empty;
+
+            if (book.Price <= 0)
+            {
+                ModelState.AddModelError("Price", "Price must be greater than zero.");
+            }
+            if (book.StockQuantity < 0)
+            {
+                ModelState.AddModelError("StockQuantity", "Stock quantity cannot be negative.");
+            }
 
             if (ModelState.IsValid)
             {
@@ -112,6 +121,21 @@ namespace OnlineBookStoreManagement.Controllers
 
             ModelState.Remove("Category");
             ModelState.Remove("Reviews");
+
+            book.Title = book.Title?.Trim() ?? string.Empty;
+            book.Author = book.Author?.Trim() ?? string.Empty;
+            book.ISBN = book.ISBN?.Trim() ?? string.Empty;
+            book.Description = book.Description?.Trim() ?? string.Empty;
+            book.CoverImageUrl = book.CoverImageUrl?.Trim() ?? string.Empty;
+
+            if (book.Price <= 0)
+            {
+                ModelState.AddModelError("Price", "Price must be greater than zero.");
+            }
+            if (book.StockQuantity < 0)
+            {
+                ModelState.AddModelError("StockQuantity", "Stock quantity cannot be negative.");
+            }
 
             if (ModelState.IsValid)
             {
