@@ -142,12 +142,16 @@ using (var scope = app.Services.CreateScope())
 }
 
 // 3. Configure HTTP Request Pipeline
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
-app.UseStatusCodePagesWithRedirects("/Home/Error?statusCode={0}");
+app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
 
 // Security Headers Middleware
 app.Use(async (context, next) =>

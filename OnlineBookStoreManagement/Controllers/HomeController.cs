@@ -14,11 +14,16 @@ namespace OnlineBookStoreManagement.Controllers
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<HomeController>? _logger;
 
-        public HomeController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        public HomeController(
+            ApplicationDbContext db,
+            UserManager<ApplicationUser> userManager,
+            ILogger<HomeController>? logger = null)
         {
             _db = db;
             _userManager = userManager;
+            _logger = logger;
         }
 
         // GET: / Home/Index (Storefront Catalog with Multi-Keyword Search, Multi-Select Checkboxes for Category, Author, Price & Rating Filtering, Sorting, Pagination)
@@ -230,7 +235,8 @@ namespace OnlineBookStoreManagement.Controllers
 
             if (book == null)
             {
-                return NotFound();
+                TempData["ErrorMessage"] = "The requested book could not be found.";
+                return RedirectToAction(nameof(Index));
             }
 
             var relatedBooks = await _db.Books
@@ -269,7 +275,11 @@ namespace OnlineBookStoreManagement.Controllers
             }
 
             var book = await _db.Books.FindAsync(bookId);
-            if (book == null) return NotFound();
+            if (book == null)
+            {
+                TempData["ErrorMessage"] = "Book not found.";
+                return RedirectToAction(nameof(Index));
+            }
 
             // Server-side validation: Rating must be between 1 and 5 stars
             if (rating < 1 || rating > 5)
@@ -322,30 +332,46 @@ namespace OnlineBookStoreManagement.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error(int? statusCode = null)
         {
-            var model = new Models.ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier };
-            if (statusCode.HasValue)
+            var exceptionHandlerFeature = HttpContext.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+            var exception = exceptionHandlerFeature?.Error;
+            var path = exceptionHandlerFeature?.Path;
+
+            int effectiveStatusCode = statusCode ?? (exception != null ? 500 : 500);
+
+            var model = new Models.ErrorViewModel
+            {
+                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
+                ErrorMessage = exception?.Message,
+                ErrorPath = path,
+                StatusCode = effectiveStatusCode
+            };
+
+            if (exception != null)
+            {
+                _logger?.LogError(exception, "Unhandled exception on path {Path}", path);
+                ViewData["ErrorMessage"] = exception.Message;
+                ViewData["ExceptionDetails"] = exception.ToString();
+            }
+            else if (statusCode.HasValue)
             {
                 if (statusCode.Value == 404)
                 {
                     ViewData["ErrorMessage"] = "The page or resource you requested could not be found.";
-                    ViewData["StatusCode"] = 404;
                 }
                 else if (statusCode.Value == 403)
                 {
                     ViewData["ErrorMessage"] = "You do not have permission to access this resource.";
-                    ViewData["StatusCode"] = 403;
                 }
                 else
                 {
                     ViewData["ErrorMessage"] = $"An unexpected error occurred (HTTP {statusCode.Value}).";
-                    ViewData["StatusCode"] = statusCode.Value;
                 }
             }
             else
             {
                 ViewData["ErrorMessage"] = "An error occurred while processing your request.";
-                ViewData["StatusCode"] = 500;
             }
+
             return View(model);
         }
     }

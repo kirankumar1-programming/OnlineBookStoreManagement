@@ -576,6 +576,10 @@ namespace OnlineBookStoreManagement.Controllers
             var orderHeader = vm.OrderHeader;
             orderHeader.OrderDate = DateTime.UtcNow;
             orderHeader.OrderStatus = "Pending";
+            if (string.IsNullOrEmpty(orderHeader.ClientSyncId))
+            {
+                orderHeader.ClientSyncId = "ORD-" + Guid.NewGuid().ToString("N");
+            }
             
             string methodKey = (paymentType ?? "upi").ToLower();
             string paymentMethodTitle = methodKey switch
@@ -639,6 +643,9 @@ namespace OnlineBookStoreManagement.Controllers
 
                 // Clear applied coupon from Session
                 HttpContext.Session.Remove(SessionCouponKey);
+
+                // Trigger background server sync
+                TriggerBackgroundSync();
             }
             catch (Exception ex)
             {
@@ -676,7 +683,11 @@ namespace OnlineBookStoreManagement.Controllers
                 .ThenInclude(d => d.Book)
                 .FirstOrDefaultAsync(o => o.Id == id && o.UserId == userId);
 
-            if (orderHeader == null) return NotFound();
+            if (orderHeader == null)
+            {
+                TempData["ErrorMessage"] = "Order not found or you do not have permission to view it.";
+                return RedirectToAction("Index", "Home");
+            }
 
             return View(orderHeader);
         }
