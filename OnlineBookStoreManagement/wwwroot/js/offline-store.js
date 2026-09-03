@@ -1,10 +1,10 @@
 /**
  * offline-store.js
- * IndexedDB storage engine for caching books, categories, offline orders, reviews, and sync queue.
+ * IndexedDB storage engine for caching books, categories, offline orders, reviews, cart, wishlist, and sync queue.
  */
 const OfflineStore = (function () {
     const DB_NAME = 'BookStoreOfflineDB';
-    const DB_VERSION = 1;
+    const DB_VERSION = 2;
     let dbInstance = null;
 
     function openDB() {
@@ -45,14 +45,24 @@ const OfflineStore = (function () {
                     reviewsStore.createIndex('status', 'status', { unique: false });
                 }
 
-                // 5. Sync Queue store
+                // 5. Offline Cart store
+                if (!db.objectStoreNames.contains('offline_cart')) {
+                    const cartStore = db.createObjectStore('offline_cart', { keyPath: 'bookId' });
+                }
+
+                // 6. Offline Wishlist store
+                if (!db.objectStoreNames.contains('offline_wishlist')) {
+                    const wishlistStore = db.createObjectStore('offline_wishlist', { keyPath: 'bookId' });
+                }
+
+                // 7. Sync Queue store
                 if (!db.objectStoreNames.contains('sync_queue')) {
                     const queueStore = db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true });
                     queueStore.createIndex('status', 'status', { unique: false });
                     queueStore.createIndex('type', 'type', { unique: false });
                 }
 
-                // 6. Meta Store
+                // 8. Meta Store
                 if (!db.objectStoreNames.contains('meta')) {
                     db.createObjectStore('meta', { keyPath: 'key' });
                 }
@@ -67,19 +77,6 @@ const OfflineStore = (function () {
                 console.error('[OfflineStore] Failed to open IndexedDB:', event.target.error);
                 reject(event.target.error);
             };
-        });
-    }
-
-    async function executeTransaction(storeName, mode, callback) {
-        const db = await openDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, mode);
-            const store = tx.objectStore(storeName);
-            const result = callback(store);
-
-            tx.oncomplete = () => resolve(result.value !== undefined ? result.value : result);
-            tx.onerror = () => reject(tx.error);
-            tx.onabort = () => reject(tx.error);
         });
     }
 
@@ -195,6 +192,139 @@ const OfflineStore = (function () {
         });
     }
 
+    // --- Offline Cart API ---
+    async function getOfflineCart() {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offline_cart', 'readonly');
+            const store = tx.objectStore('offline_cart');
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function addToOfflineCart(bookId, count = 1) {
+        const numBookId = parseInt(bookId, 10);
+        const book = await getBookById(numBookId);
+        const db = await openDB();
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offline_cart', 'readwrite');
+            const store = tx.objectStore('offline_cart');
+            const getReq = store.get(numBookId);
+
+            getReq.onsuccess = () => {
+                let existing = getReq.result;
+                if (existing) {
+                    existing.count += count;
+                    store.put(existing);
+                } else {
+                    existing = {
+                        bookId: numBookId,
+                        title: book ? book.title : 'Book #' + numBookId,
+                        author: book ? book.author : '',
+                        price: book ? book.price : 0,
+                        coverImageUrl: book ? book.coverImageUrl : '',
+                        stockQuantity: book ? book.stockQuantity : 99,
+                        count: count,
+                        addedAt: new Date().toISOString()
+                    };
+                    store.put(existing);
+                }
+            };
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function updateOfflineCartQuantity(bookId, count) {
+        const numBookId = parseInt(bookId, 10);
+        const db = await openDB();
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offline_cart', 'readwrite');
+            const store = tx.objectStore('offline_cart');
+
+            if (count <= 0) {
+                store.delete(numBookId);
+            } else {
+                const getReq = store.get(numBookId);
+                getReq.onsuccess = () => {
+                    const item = getReq.result;
+                    if (item) {
+                        item.count = count;
+                        store.put(item);
+                    }
+                };
+            }
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function removeOfflineCartItem(bookId) {
+        const numBookId = parseInt(bookId, 10);
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offline_cart', 'readwrite');
+            const store = tx.objectStore('offline_cart');
+            store.delete(numBookId);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function clearOfflineCart() {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offline_cart', 'readwrite');
+            const store = tx.objectStore('offline_cart');
+            store.clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    // --- Offline Wishlist API ---
+    async function getOfflineWishlist() {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offline_wishlist', 'readonly');
+            const store = tx.objectStore('offline_wishlist');
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function toggleOfflineWishlist(bookId) {
+        const numBookId = parseInt(bookId, 10);
+        const db = await openDB();
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('offline_wishlist', 'readwrite');
+            const store = tx.objectStore('offline_wishlist');
+            const getReq = store.get(numBookId);
+
+            let added = false;
+            getReq.onsuccess = () => {
+                if (getReq.result) {
+                    store.delete(numBookId);
+                    added = false;
+                } else {
+                    store.put({ bookId: numBookId, addedAt: new Date().toISOString() });
+                    added = true;
+                }
+            };
+
+            tx.oncomplete = () => resolve(added);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
     // --- Offline Orders API ---
     async function saveOfflineOrder(order) {
         if (!order.clientSyncId) {
@@ -205,9 +335,10 @@ const OfflineStore = (function () {
 
         const db = await openDB();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(['offline_orders', 'sync_queue'], 'readwrite');
+            const tx = db.transaction(['offline_orders', 'sync_queue', 'offline_cart'], 'readwrite');
             const orderStore = tx.objectStore('offline_orders');
             const queueStore = tx.objectStore('sync_queue');
+            const cartStore = tx.objectStore('offline_cart');
 
             orderStore.put(order);
             queueStore.add({
@@ -217,6 +348,9 @@ const OfflineStore = (function () {
                 status: 'Pending',
                 createdAt: new Date().toISOString()
             });
+
+            // Automatically clear local cart after offline order placed
+            cartStore.clear();
 
             tx.oncomplete = () => resolve(order);
             tx.onerror = () => reject(tx.error);
@@ -230,17 +364,6 @@ const OfflineStore = (function () {
             const store = tx.objectStore('offline_orders');
             const request = store.getAll();
             request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async function getOfflineOrder(clientSyncId) {
-        const db = await openDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction('offline_orders', 'readonly');
-            const store = tx.objectStore('offline_orders');
-            const request = store.get(clientSyncId);
-            request.onsuccess = () => resolve(request.result || null);
             request.onerror = () => reject(request.error);
         });
     }
@@ -361,9 +484,15 @@ const OfflineStore = (function () {
         searchBooks,
         saveCategories,
         getAllCategories,
+        getOfflineCart,
+        addToOfflineCart,
+        updateOfflineCartQuantity,
+        removeOfflineCartItem,
+        clearOfflineCart,
+        getOfflineWishlist,
+        toggleOfflineWishlist,
         saveOfflineOrder,
         getOfflineOrders,
-        getOfflineOrder,
         updateOfflineOrderStatus,
         saveOfflineReview,
         getOfflineReviews,

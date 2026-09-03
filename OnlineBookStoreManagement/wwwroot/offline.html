@@ -3,156 +3,797 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Offline Mode - MyBookStore</title>
+    <title>MyBookStore - Offline Storefront</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+    <link rel="manifest" href="/manifest.json" />
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
+            --bg-color: #0b0f19;
+            --surface-color: #111827;
+            --card-bg: #1f2937;
             --accent-primary: #3b82f6;
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             --accent-secondary: #f59e0b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-color: #374151;
         }
+
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             margin: 0;
-            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
         }
-        .offline-card {
-            background: var(--card-bg);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1.25rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-            max-width: 580px;
-            width: 100%;
-            padding: 2.5rem 2rem;
-            text-align: center;
+
+        .navbar-custom {
+            background-color: rgba(17, 24, 39, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
         }
-        .offline-icon-wrapper {
-            width: 80px;
-            height: 80px;
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--accent-secondary);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            margin-bottom: 1.5rem;
-            animation: pulse 2s infinite ease-in-out;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.06); }
-        }
+
         .badge-offline {
-            background: rgba(245, 158, 11, 0.2);
+            background: rgba(245, 158, 11, 0.15);
             color: #fbbf24;
             border: 1px solid rgba(245, 158, 11, 0.4);
-            padding: 0.35rem 0.85rem;
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
             border-radius: 2rem;
-            font-size: 0.85rem;
-            font-weight: 600;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 0.4rem;
         }
+
+        .badge-online {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
         .pulse-dot {
             width: 8px;
             height: 8px;
             background: #f59e0b;
             border-radius: 50%;
-            display: inline-block;
+            animation: pulse-dot 1.5s infinite;
         }
-        .feature-box {
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 0.75rem;
-            padding: 1rem;
-            margin: 1.5rem 0;
-            text-align: left;
-            font-size: 0.9rem;
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+        }
+
+        .book-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            transition: all 0.25s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .book-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .book-cover-wrap {
+            height: 220px;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .book-cover-img {
+            max-height: 100%;
+            width: auto;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .book-card:hover .book-cover-img {
+            transform: scale(1.05);
+        }
+
+        .nav-pills .nav-link {
             color: var(--text-muted);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 2rem;
+            padding: 0.5rem 1.25rem;
+            font-weight: 500;
         }
-        .btn-retry {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+
+        .nav-pills .nav-link.active {
+            background: var(--accent-gradient);
+            color: #fff;
+        }
+
+        .btn-primary-gradient {
+            background: var(--accent-gradient);
             color: #fff;
             border: none;
-            padding: 0.75rem 1.75rem;
-            border-radius: 0.75rem;
             font-weight: 600;
             transition: all 0.2s;
         }
-        .btn-retry:hover {
-            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+
+        .btn-primary-gradient:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: #fff;
             transform: translateY(-1px);
         }
-        .btn-catalog {
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--text-main);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 0.75rem 1.75rem;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            transition: all 0.2s;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .btn-catalog:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
+
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 1080;
         }
     </style>
 </head>
 <body>
-    <div class="offline-card">
-        <div class="offline-icon-wrapper">
-            <i class="bi bi-wifi-off"></i>
-        </div>
-        <div>
-            <span class="badge-offline">
-                <span class="pulse-dot"></span> Offline Mode Active
-            </span>
-        </div>
-        <h2 class="h3 fw-bold mb-2">No Internet Connection</h2>
-        <p class="text-secondary mb-3">
-            You are currently offline, but MyBookStore is equipped with offline data synchronization!
-        </p>
 
-        <div class="feature-box">
-            <div class="fw-semibold text-light mb-2"><i class="bi bi-shield-check text-success me-1"></i> What you can do offline:</div>
-            <ul class="list-unstyled mb-0 ps-1 d-flex flex-column gap-1">
-                <li><i class="bi bi-check2 text-primary me-1"></i> Browse cached books &amp; view book details</li>
-                <li><i class="bi bi-check2 text-primary me-1"></i> Place orders saved locally to your device</li>
-                <li><i class="bi bi-check2 text-primary me-1"></i> Write reviews and manage shopping wishlist</li>
-                <li><i class="bi bi-arrow-repeat text-warning me-1"></i> Automatic database sync when connection is back!</li>
-            </ul>
-        </div>
-
-        <div class="d-flex flex-wrap gap-2 justify-content-center">
-            <button type="button" class="btn btn-retry" onclick="window.location.reload();">
-                <i class="bi bi-arrow-clockwise me-1"></i> Retry Connection
-            </button>
-            <a href="/" class="btn btn-catalog">
-                <i class="bi bi-book me-1"></i> View Cached Store
+    <!-- Header & Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top py-2">
+        <div class="container-fluid px-lg-4">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#" onclick="switchTab('catalog')">
+                <i class="bi bi-book-half text-primary fs-4"></i>
+                <span class="fw-bold tracking-tight">MyBookStore</span>
             </a>
+
+            <div class="d-flex align-items-center gap-2 ms-auto order-lg-3">
+                <span id="networkStatusBadge" class="badge-offline">
+                    <span class="pulse-dot" id="networkPulse"></span>
+                    <span id="networkStatusText">Offline Mode</span>
+                </span>
+
+                <button class="btn btn-outline-secondary rounded-pill btn-sm d-flex align-items-center gap-1" onclick="switchTab('cart')">
+                    <i class="bi bi-cart3"></i>
+                    <span class="badge bg-primary rounded-pill" id="cartCountBadge">0</span>
+                </button>
+
+                <button class="btn btn-outline-info rounded-pill btn-sm d-flex align-items-center gap-1" onclick="switchTab('outbox')">
+                    <i class="bi bi-cloud-arrow-up"></i>
+                    <span class="badge bg-warning text-dark rounded-pill" id="outboxCountBadge">0</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="container-fluid px-lg-4 py-4 flex-grow-1">
+
+        <!-- Offline Info Banner -->
+        <div class="alert alert-warning bg-opacity-10 border-warning border-opacity-25 d-flex align-items-center justify-content-between p-3 rounded-3 mb-4 text-warning">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle-fill fs-5"></i>
+                <div>
+                    <strong>Local Offline Store Active:</strong> You can search books, add to cart, and place orders locally. Changes will automatically sync with the server database once online.
+                </div>
+            </div>
+            <button class="btn btn-warning btn-sm rounded-pill px-3 fw-semibold text-dark" onclick="triggerSyncCheck()">
+                <i class="bi bi-arrow-repeat me-1"></i> Sync Outbox
+            </button>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills gap-2 mb-4 border-bottom border-secondary pb-3">
+            <li class="nav-item">
+                <button class="nav-link active" id="tabBtn-catalog" onclick="switchTab('catalog')">
+                    <i class="bi bi-grid-fill me-1"></i> Catalog
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="tabBtn-cart" onclick="switchTab('cart')">
+                    <i class="bi bi-cart-check-fill me-1"></i> Cart (<span id="tabCartCount">0</span>)
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="tabBtn-outbox" onclick="switchTab('outbox')">
+                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> Sync Outbox (<span id="tabOutboxCount">0</span>)
+                </button>
+            </li>
+        </ul>
+
+        <!-- TAB 1: Catalog Screen -->
+        <section id="section-catalog">
+            <div class="row g-3 mb-4">
+                <div class="col-md-6 col-lg-8">
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="offlineSearchInput" class="form-control bg-dark text-light border-secondary shadow-none" placeholder="Search cached books by title, author, or ISBN..." oninput="handleSearch()" />
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <select id="offlineSortSelect" class="form-select bg-dark text-light border-secondary shadow-none" onchange="handleSearch()">
+                        <option value="default">Sort by: Default</option>
+                        <option value="price_asc">Price: Low to High</option>
+                        <option value="price_desc">Price: High to Low</option>
+                        <option value="title_asc">Title: A to Z</option>
+                        <option value="rating_desc">Highest Rated</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Categories Filter -->
+            <div class="d-flex flex-wrap gap-2 mb-4" id="categoriesFilterBar">
+                <button class="btn btn-outline-primary btn-sm rounded-pill active" onclick="filterCategory(null, this)">All Categories</button>
+            </div>
+
+            <!-- Books Grid -->
+            <div class="row g-4" id="booksGrid">
+                <div class="col-12 text-center py-5 text-muted">
+                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                    <p>Loading offline books catalog...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: Cart & Checkout Screen -->
+        <section id="section-cart" class="d-none">
+            <div class="row g-4">
+                <!-- Cart Items List -->
+                <div class="col-lg-7">
+                    <div class="card bg-dark border-secondary shadow-lg rounded-4 p-4">
+                        <h4 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-cart3 text-primary"></i>
+                            <span>Offline Shopping Cart</span>
+                        </h4>
+                        <div id="cartItemsList">
+                            <p class="text-muted">Your cart is currently empty.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Checkout Form -->
+                <div class="col-lg-5">
+                    <div class="card bg-dark border-secondary shadow-lg rounded-4 p-4">
+                        <h4 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-credit-card text-accent"></i>
+                            <span>Offline Checkout</span>
+                        </h4>
+
+                        <div class="bg-dark-subtle p-3 rounded-3 border border-secondary mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Subtotal:</span>
+                                <span class="fw-bold" id="checkoutSubtotal">₹0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Tax (8%):</span>
+                                <span class="fw-bold" id="checkoutTax">₹0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Shipping:</span>
+                                <span class="text-success fw-bold">FREE</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-top border-secondary pt-2">
+                                <span class="fw-bold fs-5">Grand Total:</span>
+                                <span class="fw-bold fs-5 text-primary" id="checkoutGrandTotal">₹0.00</span>
+                            </div>
+                        </div>
+
+                        <form id="offlineCheckoutForm" onsubmit="handlePlaceOrder(event)">
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Full Name *</label>
+                                <input type="text" id="orderName" class="form-control bg-dark text-light border-secondary" required placeholder="e.g. Rohan Sharma" value="Rohan Sharma" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Phone Number *</label>
+                                <input type="tel" id="orderPhone" class="form-control bg-dark text-light border-secondary" required placeholder="e.g. 9876543210" value="9876543210" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Street Address *</label>
+                                <input type="text" id="orderAddress" class="form-control bg-dark text-light border-secondary" required placeholder="e.g. 45 Park Street" value="45 Park Street" />
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-7">
+                                    <label class="form-label small text-muted">City *</label>
+                                    <input type="text" id="orderCity" class="form-control bg-dark text-light border-secondary" required placeholder="e.g. Mumbai" value="Mumbai" />
+                                </div>
+                                <div class="col-5">
+                                    <label class="form-label small text-muted">Postal Code *</label>
+                                    <input type="text" id="orderPostal" class="form-control bg-dark text-light border-secondary" required placeholder="e.g. 400001" value="400001" />
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small text-muted">Payment Method</label>
+                                <select id="orderPayment" class="form-select bg-dark text-light border-secondary">
+                                    <option value="upi">UPI / Net Banking</option>
+                                    <option value="cod">Cash on Delivery</option>
+                                    <option value="card">Credit / Debit Card</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary-gradient w-100 py-2 rounded-pill fw-bold" id="btnPlaceOrder">
+                                <i class="bi bi-lock-fill me-1"></i> Place Offline Order
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: Outbox Screen -->
+        <section id="section-outbox" class="d-none">
+            <div class="card bg-dark border-secondary shadow-lg rounded-4 p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-cloud-arrow-up text-warning"></i>
+                        <span>Offline Sync Outbox</span>
+                    </h4>
+                    <button class="btn btn-primary-gradient px-3 py-1 rounded-pill btn-sm" onclick="triggerSyncCheck()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Sync All Now
+                    </button>
+                </div>
+                <p class="text-muted small mb-4">The following orders and reviews were recorded locally while offline. They will synchronize into the central database as soon as you are connected.</p>
+
+                <h6 class="fw-bold text-light mb-2"><i class="bi bi-bag-check me-1 text-primary"></i> Pending Orders (<span id="outboxOrdersCount">0</span>)</h6>
+                <div id="outboxOrdersList" class="mb-4 text-muted small">Loading...</div>
+
+                <h6 class="fw-bold text-light mb-2"><i class="bi bi-star me-1 text-warning"></i> Pending Reviews (<span id="outboxReviewsCount">0</span>)</h6>
+                <div id="outboxReviewsList" class="text-muted small">Loading...</div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Review Modal -->
+    <div class="modal fade" id="offlineReviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary shadow-lg">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="reviewModalBookTitle">Write Book Review</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="reviewBookId" />
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Rating (1 to 5 Stars)</label>
+                        <select id="reviewRating" class="form-select bg-dark text-light border-secondary">
+                            <option value="5">★★★★★ (5 Stars - Outstanding)</option>
+                            <option value="4">★★★★☆ (4 Stars - Very Good)</option>
+                            <option value="3">★★★☆☆ (3 Stars - Good)</option>
+                            <option value="2">★★☆☆☆ (2 Stars - Fair)</option>
+                            <option value="1">★☆☆☆☆ (1 Star - Poor)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Review Comments</label>
+                        <textarea id="reviewComment" class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Write your thoughts on this book..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary rounded-pill" onclick="submitOfflineReview()">Save Offline Review</button>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/offline-store.js"></script>
     <script>
-        window.addEventListener('online', function () {
-            window.location.href = '/';
+        let currentCategory = null;
+        let cachedCategories = [];
+        let reviewModalInstance = null;
+
+        // Default seed books in case browser storage is empty upon first offline load
+        const fallbackBooks = [
+            { id: 1, title: "Clean Architecture: Craftsman's Guide", author: "Robert C. Martin", isbn: "978-0134494166", price: 899, categoryId: 1, coverImageUrl: "https://covers.openlibrary.org/b/isbn/9780134494166-L.jpg", stockQuantity: 25, description: "Master universal rules of software structure." },
+            { id: 2, title: "Designing Data-Intensive Applications", author: "Martin Kleppmann", isbn: "978-1449373320", price: 1299, categoryId: 1, coverImageUrl: "https://covers.openlibrary.org/b/isbn/9781449373320-L.jpg", stockQuantity: 18, description: "The definitive guide to distributed systems." },
+            { id: 3, title: "Dune: 50th Anniversary Edition", author: "Frank Herbert", isbn: "978-0441172719", price: 599, categoryId: 2, coverImageUrl: "https://covers.openlibrary.org/b/isbn/9780441172719-L.jpg", stockQuantity: 40, description: "Set on the desert planet Arrakis." },
+            { id: 4, title: "The Great Gatsby", author: "F. Scott Fitzgerald", isbn: "978-0743273565", price: 349, categoryId: 2, coverImageUrl: "https://covers.openlibrary.org/b/isbn/9780743273565-L.jpg", stockQuantity: 30, description: "Glamour, tragedy, and decadence of the Roaring Twenties." },
+            { id: 5, title: "Atomic Habits", author: "James Clear", isbn: "978-0735211292", price: 499, categoryId: 4, coverImageUrl: "https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg", stockQuantity: 50, description: "Transform your life with tiny changes." },
+            { id: 6, title: "Astrophysics for People in a Hurry", author: "Neil deGrasse Tyson", isbn: "978-0393609394", price: 450, categoryId: 5, coverImageUrl: "https://covers.openlibrary.org/b/isbn/9780393609394-L.jpg", stockQuantity: 22, description: "Bringing the cosmos down to Earth." },
+            { id: 7, title: "The Pragmatic Programmer", author: "David Thomas & Andrew Hunt", isbn: "978-0135957059", price: 1150, categoryId: 1, coverImageUrl: "https://covers.openlibrary.org/b/isbn/9780135957059-L.jpg", stockQuantity: 15, description: "Illustrates best practices and major pitfalls." },
+            { id: 8, title: "Zero to One: Notes on Startups", author: "Peter Thiel", isbn: "978-0804139298", price: 475, categoryId: 4, coverImageUrl: "https://covers.openlibrary.org/b/isbn/9780804139298-L.jpg", stockQuantity: 35, description: "How to build the future and create true innovation." }
+        ];
+
+        const fallbackCategories = [
+            { id: 1, name: "Technology & Code" },
+            { id: 2, name: "Fiction & Classics" },
+            { id: 3, name: "Sci-Fi & Fantasy" },
+            { id: 4, name: "Business & Leadership" },
+            { id: 5, name: "Science & Philosophy" }
+        ];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            reviewModalInstance = new bootstrap.Modal(document.getElementById('offlineReviewModal'));
+            await initOfflineStoreData();
+            await renderCatalog();
+            await renderCart();
+            await updateBadges();
+            setupNetworkEvents();
         });
+
+        async function initOfflineStoreData() {
+            try {
+                const books = await OfflineStore.getAllBooks();
+                if (books.length === 0) {
+                    await OfflineStore.saveBooks(fallbackBooks);
+                }
+                const categories = await OfflineStore.getAllCategories();
+                if (categories.length === 0) {
+                    await OfflineStore.saveCategories(fallbackCategories);
+                }
+                cachedCategories = await OfflineStore.getAllCategories();
+                renderCategoryFilters(cachedCategories);
+            } catch (e) {
+                console.warn('Error initializing offline store:', e);
+            }
+        }
+
+        function renderCategoryFilters(categories) {
+            const container = document.getElementById('categoriesFilterBar');
+            let html = `<button class="btn btn-outline-primary btn-sm rounded-pill active" onclick="filterCategory(null, this)">All Categories</button>`;
+            categories.forEach(c => {
+                html += `<button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="filterCategory(${c.id}, this)">${c.name}</button>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function filterCategory(catId, btn) {
+            currentCategory = catId;
+            document.querySelectorAll('#categoriesFilterBar button').forEach(b => {
+                b.classList.remove('active', 'btn-outline-primary');
+                b.classList.add('btn-outline-secondary');
+            });
+            btn.classList.add('active', 'btn-outline-primary');
+            btn.classList.remove('btn-outline-secondary');
+            renderCatalog();
+        }
+
+        async function renderCatalog() {
+            const query = document.getElementById('offlineSearchInput').value;
+            const sort = document.getElementById('offlineSortSelect').value;
+            const books = await OfflineStore.searchBooks(query, currentCategory, null, null, sort);
+            const grid = document.getElementById('booksGrid');
+
+            if (!books || books.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-12 text-center py-5 text-muted">
+                        <i class="bi bi-search display-4 mb-3 text-secondary d-block"></i>
+                        <h5>No books match your criteria</h5>
+                        <p class="small">Try adjusting your search terms or category filter.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            books.forEach(b => {
+                const cover = b.coverImageUrl || '/images/default-book.svg';
+                html += `
+                    <div class="col-sm-6 col-lg-4 col-xl-3">
+                        <div class="book-card">
+                            <div class="book-cover-wrap">
+                                <img src="${cover}" alt="${b.title}" class="book-cover-img" onerror="this.src='/images/default-book.svg'" />
+                            </div>
+                            <div class="p-3 d-flex flex-column flex-grow-1">
+                                <h6 class="fw-bold mb-1 text-light text-truncate" title="${b.title}">${b.title}</h6>
+                                <p class="text-muted small mb-2">${b.author}</p>
+                                <div class="d-flex justify-content-between align-items-center mb-3 mt-auto">
+                                    <span class="fs-5 fw-bold text-primary">₹${parseFloat(b.price).toFixed(2)}</span>
+                                    <span class="badge bg-dark-subtle border border-secondary text-muted small">${b.stockQuantity} in stock</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-primary-gradient btn-sm w-100 rounded-pill" onclick="handleAddToCart(${b.id})">
+                                        <i class="bi bi-cart-plus me-1"></i> Add to Cart
+                                    </button>
+                                    <button class="btn btn-outline-warning btn-sm rounded-circle px-2" title="Write Review" onclick="openReviewModal(${b.id}, '${b.title.replace(/'/g, "\\'")}')">
+                                        <i class="bi bi-star"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+        }
+
+        async function handleAddToCart(bookId) {
+            await OfflineStore.addToOfflineCart(bookId, 1);
+            await updateBadges();
+            showToast('Added to Cart', 'Book has been added to your local offline cart.', 'success');
+        }
+
+        async function renderCart() {
+            const items = await OfflineStore.getOfflineCart();
+            const listEl = document.getElementById('cartItemsList');
+            const subtotalEl = document.getElementById('checkoutSubtotal');
+            const taxEl = document.getElementById('checkoutTax');
+            const totalEl = document.getElementById('checkoutGrandTotal');
+            const btnPlaceOrder = document.getElementById('btnPlaceOrder');
+
+            if (!items || items.length === 0) {
+                listEl.innerHTML = '<p class="text-muted mb-0">Your offline cart is currently empty. Browse the catalog to add books!</p>';
+                subtotalEl.textContent = '₹0.00';
+                taxEl.textContent = '₹0.00';
+                totalEl.textContent = '₹0.00';
+                btnPlaceOrder.disabled = true;
+                return;
+            }
+
+            btnPlaceOrder.disabled = false;
+            let subtotal = 0;
+            let html = '<div class="list-group list-group-flush border border-secondary rounded-3 overflow-hidden">';
+
+            items.forEach(item => {
+                const itemTotal = item.price * item.count;
+                subtotal += itemTotal;
+                html += `
+                    <div class="list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center py-3">
+                        <div class="me-3">
+                            <h6 class="mb-0 fw-semibold">${item.title}</h6>
+                            <small class="text-muted">₹${item.price.toFixed(2)} each</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" onclick="updateCartQty(${item.bookId}, ${item.count - 1})">-</button>
+                                <span class="btn btn-dark disabled text-light fw-bold px-3">${item.count}</span>
+                                <button class="btn btn-outline-secondary" onclick="updateCartQty(${item.bookId}, ${item.count + 1})">+</button>
+                            </div>
+                            <span class="fw-bold text-primary w-24 text-end">₹${itemTotal.toFixed(2)}</span>
+                            <button class="btn btn-link text-danger p-0" onclick="removeCartItem(${item.bookId})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            listEl.innerHTML = html;
+
+            const tax = subtotal * 0.08;
+            const grandTotal = subtotal + tax;
+
+            subtotalEl.textContent = `₹${subtotal.toFixed(2)}`;
+            taxEl.textContent = `₹${tax.toFixed(2)}`;
+            totalEl.textContent = `₹${grandTotal.toFixed(2)}`;
+        }
+
+        async function updateCartQty(bookId, count) {
+            await OfflineStore.updateOfflineCartQuantity(bookId, count);
+            await renderCart();
+            await updateBadges();
+        }
+
+        async function removeCartItem(bookId) {
+            await OfflineStore.removeOfflineCartItem(bookId);
+            await renderCart();
+            await updateBadges();
+        }
+
+        async function handlePlaceOrder(e) {
+            e.preventDefault();
+            const items = await OfflineStore.getOfflineCart();
+            if (items.length === 0) {
+                alert('Your cart is empty.');
+                return;
+            }
+
+            let subtotal = items.reduce((sum, i) => sum + (i.price * i.count), 0);
+            const grandTotal = subtotal + (subtotal * 0.08);
+
+            const order = {
+                clientSyncId: 'OFFLINE-ORD-' + Date.now(),
+                name: document.getElementById('orderName').value.trim(),
+                phoneNumber: document.getElementById('orderPhone').value.trim(),
+                streetAddress: document.getElementById('orderAddress').value.trim(),
+                city: document.getElementById('orderCity').value.trim(),
+                postalCode: document.getElementById('orderPostal').value.trim(),
+                paymentType: document.getElementById('orderPayment').value,
+                orderTotal: grandTotal,
+                orderDate: new Date().toISOString(),
+                items: items.map(i => ({ bookId: i.bookId, title: i.title, count: i.count, price: i.price }))
+            };
+
+            await OfflineStore.saveOfflineOrder(order);
+            await renderCart();
+            await updateBadges();
+            await renderOutbox();
+
+            showToast('Order Placed Offline!', `Order reference: ${order.clientSyncId}. It will sync automatically when back online.`, 'success');
+            switchTab('outbox');
+        }
+
+        function openReviewModal(bookId, bookTitle) {
+            document.getElementById('reviewBookId').value = bookId;
+            document.getElementById('reviewModalBookTitle').textContent = `Review: ${bookTitle}`;
+            document.getElementById('reviewComment').value = '';
+            reviewModalInstance.show();
+        }
+
+        async function submitOfflineReview() {
+            const bookId = parseInt(document.getElementById('reviewBookId').value, 10);
+            const rating = parseInt(document.getElementById('reviewRating').value, 10);
+            const comment = document.getElementById('reviewComment').value.trim();
+
+            if (!comment) {
+                alert('Please enter review comments.');
+                return;
+            }
+
+            const review = {
+                clientSyncId: 'OFFLINE-REV-' + Date.now(),
+                bookId: bookId,
+                rating: rating,
+                comment: comment,
+                reviewDate: new Date().toISOString()
+            };
+
+            await OfflineStore.saveOfflineReview(review);
+            reviewModalInstance.hide();
+            await updateBadges();
+            await renderOutbox();
+
+            showToast('Review Saved Offline', 'Your rating was saved locally and queued for server synchronization.', 'success');
+        }
+
+        async function renderOutbox() {
+            const orders = await OfflineStore.getOfflineOrders();
+            const reviews = await OfflineStore.getOfflineReviews();
+
+            document.getElementById('outboxOrdersCount').textContent = orders.length;
+            document.getElementById('outboxReviewsCount').textContent = reviews.length;
+
+            const ordersListEl = document.getElementById('outboxOrdersList');
+            if (orders.length === 0) {
+                ordersListEl.innerHTML = '<p class="text-muted italic mb-0">No offline orders pending sync.</p>';
+            } else {
+                let html = '<div class="list-group list-group-flush border border-secondary rounded-3 overflow-hidden">';
+                orders.forEach(o => {
+                    html += `
+                        <div class="list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold text-primary font-monospace">${o.clientSyncId}</span>
+                                <div class="text-muted small">${o.name} &bull; ${o.items ? o.items.length : 0} item(s) &bull; ₹${o.orderTotal.toFixed(2)}</div>
+                            </div>
+                            <span class="badge bg-warning text-dark">Pending Server Sync</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                ordersListEl.innerHTML = html;
+            }
+
+            const reviewsListEl = document.getElementById('outboxReviewsList');
+            if (reviews.length === 0) {
+                reviewsListEl.innerHTML = '<p class="text-muted italic mb-0">No offline reviews pending sync.</p>';
+            } else {
+                let html = '<div class="list-group list-group-flush border border-secondary rounded-3 overflow-hidden">';
+                reviews.forEach(r => {
+                    html += `
+                        <div class="list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-warning">${'★'.repeat(r.rating)}</span>
+                                <div class="text-muted small">Book #${r.bookId}: "${r.comment}"</div>
+                            </div>
+                            <span class="badge bg-warning text-dark">Pending Sync</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                reviewsListEl.innerHTML = html;
+            }
+        }
+
+        async function updateBadges() {
+            const cartItems = await OfflineStore.getOfflineCart();
+            const count = cartItems.reduce((sum, i) => sum + i.count, 0);
+            document.getElementById('cartCountBadge').textContent = count;
+            document.getElementById('tabCartCount').textContent = count;
+
+            const counts = await OfflineStore.getPendingCounts();
+            document.getElementById('outboxCountBadge').textContent = counts.total;
+            document.getElementById('tabOutboxCount').textContent = counts.total;
+        }
+
+        function switchTab(tabName) {
+            ['catalog', 'cart', 'outbox'].forEach(t => {
+                document.getElementById('section-' + t).classList.add('d-none');
+                document.getElementById('tabBtn-' + t).classList.remove('active');
+            });
+            document.getElementById('section-' + tabName).classList.remove('d-none');
+            document.getElementById('tabBtn-' + tabName).classList.add('active');
+
+            if (tabName === 'catalog') renderCatalog();
+            if (tabName === 'cart') renderCart();
+            if (tabName === 'outbox') renderOutbox();
+        }
+
+        function handleSearch() {
+            renderCatalog();
+        }
+
+        function setupNetworkEvents() {
+            window.addEventListener('online', () => {
+                const badge = document.getElementById('networkStatusBadge');
+                badge.className = 'badge-online';
+                document.getElementById('networkPulse').style.background = '#10b981';
+                document.getElementById('networkStatusText').textContent = 'Back Online';
+                showToast('Back Online', 'Internet connection detected! Syncing data with server...', 'info');
+                triggerSyncCheck();
+            });
+
+            window.addEventListener('offline', () => {
+                const badge = document.getElementById('networkStatusBadge');
+                badge.className = 'badge-offline';
+                document.getElementById('networkPulse').style.background = '#f59e0b';
+                document.getElementById('networkStatusText').textContent = 'Offline Mode';
+            });
+        }
+
+        async function triggerSyncCheck() {
+            try {
+                const ping = await fetch('/api/sync/ping', { cache: 'no-cache' });
+                if (ping.ok) {
+                    // Send pending outbox to /api/sync/process
+                    const orders = await OfflineStore.getOfflineOrders();
+                    const reviews = await OfflineStore.getOfflineReviews();
+                    const pendingOrders = orders.filter(o => o.status === 'PendingSync');
+                    const pendingReviews = reviews.filter(r => r.status === 'PendingSync');
+
+                    if (pendingOrders.length > 0 || pendingReviews.length > 0) {
+                        const batch = { orders: pendingOrders, reviews: pendingReviews };
+                        const res = await fetch('/api/sync/process', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(batch)
+                        });
+                        if (res.ok) {
+                            await OfflineStore.clearAllPendingQueue();
+                            // Mark orders as synced
+                            for (const o of pendingOrders) {
+                                await OfflineStore.updateOfflineOrderStatus(o.clientSyncId, 'Synced');
+                            }
+                            showToast('Sync Successful', 'Offline orders and reviews were synchronized into the database!', 'success');
+                            await updateBadges();
+                            await renderOutbox();
+                        }
+                    } else {
+                        showToast('Up to Date', 'All offline items are already synchronized.', 'info');
+                    }
+                }
+            } catch (e) {
+                showToast('Offline', 'Server is currently unreachable. Your items remain saved locally.', 'warning');
+            }
+        }
+
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const bgClass = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : 'bg-primary';
+            const toastEl = document.createElement('div');
+            toastEl.className = `toast align-items-center text-white ${bgClass} border-0 show shadow-lg mb-2`;
+            toastEl.setAttribute('role', 'alert');
+            toastEl.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <strong>${title}:</strong> ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            container.appendChild(toastEl);
+            setTimeout(() => { toastEl.remove(); }, 4500);
+        }
     </script>
 </body>
 </html>
