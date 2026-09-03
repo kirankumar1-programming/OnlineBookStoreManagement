@@ -3,7 +3,9 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d6efd" />
     <title>@ViewData["Title"] - MyBookStore</title>
+    <link rel="manifest" href="~/manifest.json" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -22,7 +24,7 @@
                 </button>
 
                 <div class="collapse navbar-collapse mt-3 mt-lg-0" id="navbarContent">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 gap-1">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 gap-1 align-items-lg-center">
                         <li class="nav-item">
                             <a class="nav-link nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index">
                                 <i class="bi bi-grid me-1"></i> Catalog
@@ -30,10 +32,34 @@
                         </li>
                     </ul>
 
+                    <div class="d-flex align-items-center gap-2 me-lg-3 my-2 my-lg-0">
+                        <!-- Offline/Online Status Pill -->
+                        <span id="offlineStatusBadge" class="cursor-pointer" role="button" data-bs-toggle="modal" data-bs-target="#offlineSyncModal" title="Click to view offline synchronization status">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-wifi me-1"></i>Online</span>
+                        </span>
+
+                        <!-- Sync Trigger Button -->
+                        <button type="button" id="navbarSyncBtn" class="btn btn-sm btn-outline-secondary rounded-pill text-light px-2 py-1 position-relative" data-bs-toggle="modal" data-bs-target="#offlineSyncModal" title="Offline Synchronization Manager">
+                            <i class="bi bi-arrow-repeat"></i>
+                            <span class="sync-pending-count badge rounded-pill bg-warning text-dark position-absolute top-0 start-100 translate-middle" style="display:none; font-size: 0.65rem;"></span>
+                        </button>
+                    </div>
+
                     <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
+
+        <!-- Offline Mode Floating Alert Bar -->
+        <div id="offlineModeBanner" class="alert alert-warning border-0 rounded-0 py-2 px-3 mb-0 text-center shadow-sm d-none" role="alert">
+            <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap small fw-semibold">
+                <i class="bi bi-wifi-off fs-5"></i>
+                <span>Offline Mode Active: You can browse cached books, search offline, and place orders. All changes will automatically sync to the server when connection is restored!</span>
+                <button type="button" class="btn btn-sm btn-dark text-warning border-warning ms-2 py-0 px-2 rounded-pill" onclick="OfflineSyncManager.processPendingSync()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Try Sync
+                </button>
+            </div>
+        </div>
 
         <!-- Sub-Navbar Live Search Bar (Aligned Below Menu) -->
         <div class="search-bar-row py-2 border-bottom border-secondary shadow-sm">
@@ -72,18 +98,127 @@
 
     <partial name="_ChatbotPartial" />
 
+    <!-- Offline Synchronization Manager Modal -->
+    <div class="modal fade" id="offlineSyncModal" tabindex="-1" aria-labelledby="offlineSyncModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-dark text-light border-secondary shadow-lg">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="offlineSyncModalLabel">
+                        <i class="bi bi-cloud-arrow-up-fill text-primary"></i>
+                        <span>Offline Database Synchronization Manager</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="card bg-dark-subtle border-secondary mb-3 p-3 rounded-3">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                            <div>
+                                <h6 class="mb-1 fw-bold text-light d-flex align-items-center gap-2">
+                                    <span>Main Server Database</span>
+                                    <span id="serverDbStatusBadge" class="badge bg-secondary">Checking...</span>
+                                </h6>
+                                <p id="serverDbStatusMsg" class="text-muted small mb-0">Local SQLite database handles all offline operations and syncs automatically with Server DB when connected.</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-info px-3 py-1 rounded-pill btn-sm fw-semibold" onclick="OfflineSyncManager.triggerServerDatabaseSync()">
+                                <i class="bi bi-database-check me-1"></i> Sync Server DB
+                            </button>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-2 text-light"><i class="bi bi-bag-check me-1 text-accent"></i> Offline Orders in Local Outbox</h6>
+                    <div id="offlineOrdersModalList" class="mb-3 text-muted small">
+                        <p class="mb-0">Loading offline orders...</p>
+                    </div>
+
+                    <h6 class="fw-bold mb-2 text-light"><i class="bi bi-star-half me-1 text-warning"></i> Offline Reviews in Local Outbox</h6>
+                    <div id="offlineReviewsModalList" class="text-muted small">
+                        <p class="mb-0">Loading offline reviews...</p>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary px-3 rounded-pill" onclick="OfflineSyncManager.refreshCatalogCache(); OfflineSyncManager.processPendingSync();">
+                        <i class="bi bi-cloud-download me-1"></i> Refresh Catalog &amp; Sync
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <div class="container text-center">
             <p class="mb-1 fw-semibold text-light">&copy; @DateTime.UtcNow.Year MyBookStore Management System. Built with ASP.NET Core &amp; EF Core.</p>
-            <small class="text-muted">Designed for fast, secure &amp; seamless online bookstore management.</small>
+            <small class="text-muted">Equipped with Offline Mode &amp; Automatic Background Database Sync.</small>
         </div>
     </footer>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/offline-store.js" asp-append-version="true"></script>
+    <script src="~/js/offline-sync.js" asp-append-version="true"></script>
     <script src="~/js/chatbot.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        // Populate modal with offline items when opened
+        const syncModalEl = document.getElementById('offlineSyncModal');
+        if (syncModalEl) {
+            syncModalEl.addEventListener('show.bs.modal', async () => {
+                const ordersListEl = document.getElementById('offlineOrdersModalList');
+                const reviewsListEl = document.getElementById('offlineReviewsModalList');
+
+                if (ordersListEl && window.OfflineStore) {
+                    const orders = await OfflineStore.getOfflineOrders();
+                    if (orders.length === 0) {
+                        ordersListEl.innerHTML = '<p class="text-muted mb-0 italic">No offline orders in outbox. All orders are synced with the main database.</p>';
+                    } else {
+                        let html = '<div class="list-group list-group-flush border border-secondary rounded-3 overflow-hidden">';
+                        orders.forEach(o => {
+                            const badge = o.status === 'Synced'
+                                ? `<span class="badge bg-success">Synced (ID: #${o.serverId})</span>`
+                                : `<span class="badge bg-warning text-dark">Pending Sync</span>`;
+                            html += `
+                                <div class="list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="fw-mono text-primary">${o.clientSyncId}</span>
+                                        <div class="text-muted small">${o.name} &bull; ${o.items ? o.items.length : 0} item(s) &bull; ₹${parseFloat(o.orderTotal || 0).toFixed(2)}</div>
+                                    </div>
+                                    <div>${badge}</div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        ordersListEl.innerHTML = html;
+                    }
+                }
+
+                if (reviewsListEl && window.OfflineStore) {
+                    const reviews = await OfflineStore.getOfflineReviews();
+                    if (reviews.length === 0) {
+                        reviewsListEl.innerHTML = '<p class="text-muted mb-0 italic">No offline reviews in outbox.</p>';
+                    } else {
+                        let html = '<div class="list-group list-group-flush border border-secondary rounded-3 overflow-hidden">';
+                        reviews.forEach(r => {
+                            const badge = r.status === 'Synced'
+                                ? `<span class="badge bg-success">Synced</span>`
+                                : `<span class="badge bg-warning text-dark">Pending Sync</span>`;
+                            html += `
+                                <div class="list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="text-warning">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+                                        <div class="text-muted small">Book #${r.bookId}: "${r.comment}"</div>
+                                    </div>
+                                    <div>${badge}</div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        reviewsListEl.innerHTML = html;
+                    }
+                }
+            });
+        }
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

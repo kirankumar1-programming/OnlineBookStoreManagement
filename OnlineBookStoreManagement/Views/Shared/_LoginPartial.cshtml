@@ -98,8 +98,8 @@
             </a>
         </li>
 
-        <li class="nav-item dropdown">
-            <a class="nav-link nav-link-custom dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+        <li class="nav-item dropdown position-relative">
+            <a class="nav-link nav-link-custom dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px; font-weight: 700; font-size: 0.85rem;">
                     @(!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0, 1).ToUpper() : "A")
                 </div>
@@ -171,11 +171,11 @@
                         <i class="bi bi-bag-check me-2"></i> My Orders
                     </a>
                 </li>
-                <li><hr class="dropdown-divider border-secondary"></li>
+                <li><hr class="dropdown-divider border-secondary my-1"></li>
                 <li>
-                    <form class="form-inline" asp-controller="Account" asp-action="Logout" method="post">
-                        <button type="submit" class="dropdown-item text-danger py-2 w-100 text-start">
-                            <i class="bi bi-box-arrow-right me-2"></i> Sign Out
+                    <form class="form-inline m-0 p-0" asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="dropdown-item text-danger py-2 w-100 text-start d-flex align-items-center gap-2 fw-semibold">
+                            <i class="bi bi-box-arrow-right fs-5"></i> Sign Out
                         </button>
                     </form>
                 </li>

@@ -1,19 +1,18 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Models;
 
 namespace OnlineBookStoreManagement.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    public class ServerDbContext : IdentityDbContext<ApplicationUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        public ServerDbContext(DbContextOptions<ServerDbContext> options)
             : base(options)
         {
         }
 
-        public DbSet<Book> Books { get; set; }
-        public DbSet<Category> Categories { get; set; }
-
+        public DbSet<Book> Books { get; set; } = null!;
+        public DbSet<Category> Categories { get; set; } = null!;
         public DbSet<ShoppingCartItem> ShoppingCartItems { get; set; } = null!;
         public DbSet<WishlistItem> WishlistItems { get; set; } = null!;
         public DbSet<OrderHeader> OrderHeaders { get; set; } = null!;
@@ -21,11 +20,10 @@ namespace OnlineBookStoreManagement.Data
         public DbSet<BookReview> BookReviews { get; set; } = null!;
         public DbSet<Coupon> Coupons { get; set; } = null!;
 
-
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
-            // Configure entity relationships if needed
+
             builder.Entity<Book>()
                 .HasOne(b => b.Category)
                 .WithMany(c => c.Books)
@@ -51,6 +49,4 @@ namespace OnlineBookStoreManagement.Data
                 .HasIndex(o => o.ClientSyncId);
         }
     }
-
-
 }

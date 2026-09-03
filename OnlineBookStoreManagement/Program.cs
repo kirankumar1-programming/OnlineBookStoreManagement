@@ -26,10 +26,55 @@ builder.Services.AddHostedService<LowStockDigestBackgroundService>();
 // Configure PDF Invoice Generator Service
 builder.Services.AddScoped<IPdfInvoiceGeneratorService, PdfInvoiceGeneratorService>();
 
-// 1. Add DbContext (SQL Server or SQLite)
+// Configure Offline Sync Service
+builder.Services.AddScoped<ISyncService, SyncService>();
+
+// Configure Server Database Synchronization Services
+builder.Services.AddSingleton<IServerDatabaseSyncService, ServerDatabaseSyncService>();
+builder.Services.AddHostedService<ServerDatabaseSyncBackgroundService>();
+
+// 1. Configure Local Operational DbContext & Remote Server DbContext
+var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=bookstore.db";
+var serverConn = builder.Configuration.GetConnectionString("ServerConnection");
+
+// If DefaultConnection contains remote SQL Server, assign it to serverConn and use local SQLite for ApplicationDbContext
+if (defaultConn.Contains("database.windows.net", StringComparison.OrdinalIgnoreCase) ||
+    defaultConn.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
+    defaultConn.Contains("Data Source=tcp:", StringComparison.OrdinalIgnoreCase))
+{
+    if (string.IsNullOrWhiteSpace(serverConn))
+    {
+        serverConn = defaultConn;
+    }
+    defaultConn = "Data Source=bookstore.db";
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? "Data Source=bookstore.db"));
+{
+    options.UseSqlite(defaultConn);
+});
+
+if (!string.IsNullOrWhiteSpace(serverConn))
+{
+    builder.Services.AddDbContext<ServerDbContext>(options =>
+    {
+        options.UseSqlServer(serverConn, sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(2),
+                errorNumbersToAdd: null);
+            sqlOptions.CommandTimeout(8);
+        });
+    });
+}
+else
+{
+    builder.Services.AddDbContext<ServerDbContext>(options =>
+    {
+        options.UseSqlite("Data Source=server_bookstore.db");
+    });
+}
 
 // 2. Configure ASP.NET Core Identity with Roles
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>

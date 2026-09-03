@@ -4,19 +4,34 @@ using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Data;
 using OnlineBookStoreManagement.Models;
 using OnlineBookStoreManagement.Models.ViewModels;
+using OnlineBookStoreManagement.Services;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace OnlineBookStoreManagement.Controllers
 {
     public class WishlistController : Controller
     {
         private readonly ApplicationDbContext _db;
+        private readonly IServerDatabaseSyncService? _serverDbSync;
         private readonly ILogger<WishlistController> _logger;
 
-        public WishlistController(ApplicationDbContext db, ILogger<WishlistController> logger)
+        public WishlistController(
+            ApplicationDbContext db,
+            ILogger<WishlistController> logger,
+            IServerDatabaseSyncService? serverDbSync = null)
         {
             _db = db;
             _logger = logger;
+            _serverDbSync = serverDbSync;
+        }
+
+        private void TriggerBackgroundSync()
+        {
+            if (_serverDbSync != null)
+            {
+                _ = Task.Run(() => _serverDbSync.SyncWithServerDatabaseAsync());
+            }
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -86,6 +101,7 @@ namespace OnlineBookStoreManagement.Controllers
                 };
                 await _db.WishlistItems.AddAsync(wishlistItem);
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
                 TempData["SuccessMessage"] = $"\"{book.Title}\" added to your wishlist!";
             }
             else
@@ -135,6 +151,7 @@ namespace OnlineBookStoreManagement.Controllers
             {
                 _db.WishlistItems.Remove(existingItem);
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
                 inWishlist = false;
                 message = $"\"{book.Title}\" removed from your wishlist.";
             }
@@ -148,6 +165,7 @@ namespace OnlineBookStoreManagement.Controllers
                 };
                 await _db.WishlistItems.AddAsync(wishlistItem);
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
                 inWishlist = true;
                 message = $"\"{book.Title}\" added to your wishlist!";
             }
@@ -178,6 +196,7 @@ namespace OnlineBookStoreManagement.Controllers
                 var bookTitle = item.Book?.Title ?? "Book";
                 _db.WishlistItems.Remove(item);
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
                 TempData["SuccessMessage"] = $"\"{bookTitle}\" removed from your wishlist.";
             }
 
@@ -255,6 +274,7 @@ namespace OnlineBookStoreManagement.Controllers
             // Remove from Wishlist
             _db.WishlistItems.Remove(wishlistItem);
             await _db.SaveChangesAsync();
+            TriggerBackgroundSync();
 
             TempData["SuccessMessage"] = $"\"{book.Title}\" has been moved to your shopping cart!";
 
@@ -324,6 +344,7 @@ namespace OnlineBookStoreManagement.Controllers
             }
 
             await _db.SaveChangesAsync();
+            TriggerBackgroundSync();
 
             int outOfStockCount = wishlistItems.Count - inStockItems.Count;
             if (outOfStockCount > 0)
@@ -354,6 +375,7 @@ namespace OnlineBookStoreManagement.Controllers
             {
                 _db.WishlistItems.RemoveRange(items);
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
                 TempData["SuccessMessage"] = "Your wishlist has been cleared.";
             }
 

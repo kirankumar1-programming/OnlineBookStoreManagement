@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using OnlineBookStoreManagement.Data;
 using OnlineBookStoreManagement.Models;
 
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
+
 namespace OnlineBookStoreManagement.Data
 {
     public static class DbInitializer
@@ -18,75 +21,117 @@ namespace OnlineBookStoreManagement.Data
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-            // Ensure Database is Created
-            await context.Database.EnsureCreatedAsync();
+            // Ensure Database and Schema Tables are Created
+            var databaseCreator = context.Database.GetService<IDatabaseCreator>() as RelationalDatabaseCreator;
+            if (databaseCreator != null)
+            {
+                if (!await databaseCreator.ExistsAsync())
+                {
+                    await databaseCreator.CreateAsync();
+                }
+
+                // Verify if application & identity tables exist
+                bool tablesExist = false;
+                try
+                {
+                    tablesExist = await databaseCreator.HasTablesAsync();
+                    if (tablesExist)
+                    {
+                        // Explicitly check if AspNetUsers exists to avoid Azure SQL system-table false positives
+                        _ = await userManager.Users.Take(1).ToListAsync();
+                    }
+                }
+                catch
+                {
+                    tablesExist = false;
+                }
+
+                if (!tablesExist)
+                {
+                    try
+                    {
+                        await databaseCreator.CreateTablesAsync();
+                    }
+                    catch
+                    {
+                        await context.Database.EnsureCreatedAsync();
+                    }
+                }
+            }
+            else
+            {
+                await context.Database.EnsureCreatedAsync();
+            }
 
             // Schema Migration Guard for Existing SQLite Database Files
-            try
+            if (context.Database.IsSqlite())
             {
-                await context.Database.ExecuteSqlRawAsync(@"
-                    CREATE TABLE IF NOT EXISTS ""Coupons"" (
-                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_Coupons"" PRIMARY KEY AUTOINCREMENT,
-                        ""Code"" TEXT NOT NULL,
-                        ""Description"" TEXT NOT NULL,
-                        ""DiscountType"" TEXT NOT NULL,
-                        ""DiscountValue"" TEXT NOT NULL,
-                        ""MinimumOrderAmount"" TEXT NOT NULL,
-                        ""MaximumDiscountAmount"" TEXT NULL,
-                        ""IsActive"" INTEGER NOT NULL,
-                        ""StartDate"" TEXT NULL,
-                        ""ExpiryDate"" TEXT NULL,
-                        ""UsageLimit"" INTEGER NULL,
-                        ""TimesUsed"" INTEGER NOT NULL DEFAULT 0
-                    );");
-            }
-            catch { /* Table already exists */ }
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        CREATE TABLE IF NOT EXISTS ""Coupons"" (
+                            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_Coupons"" PRIMARY KEY AUTOINCREMENT,
+                            ""Code"" TEXT NOT NULL,
+                            ""Description"" TEXT NOT NULL,
+                            ""DiscountType"" TEXT NOT NULL,
+                            ""DiscountValue"" TEXT NOT NULL,
+                            ""MinimumOrderAmount"" TEXT NOT NULL,
+                            ""MaximumDiscountAmount"" TEXT NULL,
+                            ""IsActive"" INTEGER NOT NULL,
+                            ""StartDate"" TEXT NULL,
+                            ""ExpiryDate"" TEXT NULL,
+                            ""UsageLimit"" INTEGER NULL,
+                            ""TimesUsed"" INTEGER NOT NULL DEFAULT 0
+                        );");
+                }
+                catch { /* Table already exists */ }
 
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN StartDate TEXT NULL;");
-            }
-            catch { /* Column already exists */ }
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN StartDate TEXT NULL;");
+                }
+                catch { /* Column already exists */ }
 
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN UsageLimit INTEGER NULL;");
-            }
-            catch { /* Column already exists */ }
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN UsageLimit INTEGER NULL;");
+                }
+                catch { /* Column already exists */ }
 
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN TimesUsed INTEGER NOT NULL DEFAULT 0;");
-            }
-            catch { /* Column already exists */ }
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE Coupons ADD COLUMN TimesUsed INTEGER NOT NULL DEFAULT 0;");
+                }
+                catch { /* Column already exists */ }
 
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE OrderHeaders ADD COLUMN CouponCode TEXT NULL;");
-            }
-            catch { /* Column already exists */ }
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE OrderHeaders ADD COLUMN CouponCode TEXT NULL;");
+                }
+                catch { /* Column already exists */ }
 
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE OrderHeaders ADD COLUMN DiscountAmount TEXT NOT NULL DEFAULT '0.00';");
-            }
-            catch { /* Column already exists */ }
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE OrderHeaders ADD COLUMN DiscountAmount TEXT NOT NULL DEFAULT '0.00';");
+                }
+                catch { /* Column already exists */ }
 
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync(@"
-                    CREATE TABLE IF NOT EXISTS ""WishlistItems"" (
-                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_WishlistItems"" PRIMARY KEY AUTOINCREMENT,
-                        ""UserId"" TEXT NOT NULL,
-                        ""BookId"" INTEGER NOT NULL,
-                        ""CreatedAt"" TEXT NOT NULL,
-                        CONSTRAINT ""FK_WishlistItems_AspNetUsers_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers"" (""Id"") ON DELETE CASCADE,
-                        CONSTRAINT ""FK_WishlistItems_Books_BookId"" FOREIGN KEY (""BookId"") REFERENCES ""Books"" (""Id"") ON DELETE CASCADE
-                    );");
-                await context.Database.ExecuteSqlRawAsync(@"
-                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_WishlistItems_UserId_BookId"" ON ""WishlistItems"" (""UserId"", ""BookId"");");
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        CREATE TABLE IF NOT EXISTS ""WishlistItems"" (
+                            ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_WishlistItems"" PRIMARY KEY AUTOINCREMENT,
+                            ""UserId"" TEXT NOT NULL,
+                            ""BookId"" INTEGER NOT NULL,
+                            ""CreatedAt"" TEXT NOT NULL,
+                            CONSTRAINT ""FK_WishlistItems_AspNetUsers_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers"" (""Id"") ON DELETE CASCADE,
+                            CONSTRAINT ""FK_WishlistItems_Books_BookId"" FOREIGN KEY (""BookId"") REFERENCES ""Books"" (""Id"") ON DELETE CASCADE
+                        );");
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_WishlistItems_UserId_BookId"" ON ""WishlistItems"" (""UserId"", ""BookId"");");
+                }
+                catch { /* Table/index already exists */ }
             }
-            catch { /* Table/index already exists */ }
 
             // 1. Seed Roles
             if (!await roleManager.RoleExistsAsync(Role_Admin))

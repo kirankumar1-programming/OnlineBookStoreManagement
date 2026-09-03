@@ -407,18 +407,35 @@ select option {
 }
 
 /* Dropdown Menus & Vertical Scrollbar */
+.navbar-nav .nav-item.dropdown {
+    position: relative;
+}
+
 .dropdown-menu {
     z-index: 1060 !important;
-    max-height: min(480px, calc(100vh - 100px)) !important;
+    max-height: calc(100vh - 90px) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    min-width: 270px !important;
-    max-width: min(340px, 90vw) !important;
+    min-width: 280px !important;
+    max-width: min(340px, 92vw) !important;
     scrollbar-width: thin;
     scrollbar-color: #475569 #1e293b;
     border: 1px solid #475569 !important;
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.75), 0 0 1px rgba(255, 255, 255, 0.15) !important;
     border-radius: var(--radius-md) !important;
+    padding: 0.5rem 0 0.75rem 0 !important;
+}
+
+@media (min-width: 992px) {
+    .navbar-expand-lg .navbar-nav .dropdown-menu-end,
+    .dropdown-menu.dropdown-menu-end,
+    .dropdown-menu-end[data-bs-popper] {
+        right: 0 !important;
+        left: auto !important;
+        transform: none !important;
+        top: 100% !important;
+        margin-top: 0.5rem !important;
+    }
 }
 
 .dropdown-menu.dropdown-menu-end,

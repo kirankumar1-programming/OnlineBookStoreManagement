@@ -79,6 +79,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         showSpinner(true);
 
+        if (!navigator.onLine && window.OfflineStore) {
+            OfflineStore.searchBooks(query).then(offlineBooks => {
+                showSpinner(false);
+                renderDropdown(offlineBooks.map(b => ({
+                    id: b.id,
+                    title: b.title,
+                    author: b.author,
+                    isbn: b.isbn,
+                    category: b.categoryName || '',
+                    price: parseFloat(b.price || 0).toFixed(2),
+                    coverImageUrl: b.coverImageUrl || '/images/default-book.svg',
+                    inStock: (b.stockQuantity || 0) > 0,
+                    stockQuantity: b.stockQuantity || 0
+                })), query);
+            });
+            return;
+        }
+
         if (abortController) {
             abortController.abort();
         }
@@ -95,10 +113,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 showSpinner(false);
                 renderDropdown(data, query);
             })
-            .catch(error => {
+            .catch(async error => {
                 if (error.name === 'AbortError') return;
                 showSpinner(false);
-                console.error('Live search request failed:', error);
+                if (window.OfflineStore) {
+                    try {
+                        const offlineBooks = await OfflineStore.searchBooks(query);
+                        renderDropdown(offlineBooks.map(b => ({
+                            id: b.id,
+                            title: b.title,
+                            author: b.author,
+                            isbn: b.isbn,
+                            category: b.categoryName || '',
+                            price: parseFloat(b.price || 0).toFixed(2),
+                            coverImageUrl: b.coverImageUrl || '/images/default-book.svg',
+                            inStock: (b.stockQuantity || 0) > 0,
+                            stockQuantity: b.stockQuantity || 0
+                        })), query);
+                    } catch (e) {
+                        console.error('Offline search fallback error:', e);
+                    }
+                } else {
+                    console.error('Live search request failed:', error);
+                }
             });
     }
 

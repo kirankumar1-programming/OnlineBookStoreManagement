@@ -17,14 +17,29 @@ namespace OnlineBookStoreManagement.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSenderService _emailSender;
+        private readonly IServerDatabaseSyncService? _serverDbSync;
         private readonly ILogger<CartController> _logger;
 
-        public CartController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IEmailSenderService emailSender, ILogger<CartController> logger)
+        public CartController(
+            ApplicationDbContext db,
+            UserManager<ApplicationUser> userManager,
+            IEmailSenderService emailSender,
+            ILogger<CartController> logger,
+            IServerDatabaseSyncService? serverDbSync = null)
         {
             _db = db;
             _userManager = userManager;
             _emailSender = emailSender;
             _logger = logger;
+            _serverDbSync = serverDbSync;
+        }
+
+        private void TriggerBackgroundSync()
+        {
+            if (_serverDbSync != null)
+            {
+                _ = Task.Run(() => _serverDbSync.SyncWithServerDatabaseAsync());
+            }
         }
 
         private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -215,6 +230,7 @@ namespace OnlineBookStoreManagement.Controllers
             }
 
             await _db.SaveChangesAsync();
+            TriggerBackgroundSync();
             TempData["SuccessMessage"] = $"\"{book.Title}\" added to your cart!";
 
             return RedirectToAction(nameof(Index));
@@ -253,6 +269,7 @@ namespace OnlineBookStoreManagement.Controllers
                     TempData["SuccessMessage"] = $"Updated quantity for \"{cartItem.Book.Title}\" to {quantity}.";
                 }
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
             }
 
             return RedirectToAction(nameof(Index));
@@ -271,6 +288,7 @@ namespace OnlineBookStoreManagement.Controllers
                 {
                     cartItem.Count += 1;
                     await _db.SaveChangesAsync();
+                    TriggerBackgroundSync();
                     TempData["SuccessMessage"] = $"Updated quantity for \"{cartItem.Book.Title}\" to {cartItem.Count}.";
                 }
                 else
@@ -301,6 +319,7 @@ namespace OnlineBookStoreManagement.Controllers
                     TempData["SuccessMessage"] = $"Updated quantity for \"{cartItem.Book.Title}\" to {cartItem.Count}.";
                 }
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
             }
             return RedirectToAction(nameof(Index));
         }
@@ -317,6 +336,7 @@ namespace OnlineBookStoreManagement.Controllers
                 var title = cartItem.Book?.Title ?? "Item";
                 _db.ShoppingCartItems.Remove(cartItem);
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
                 TempData["SuccessMessage"] = $"\"{title}\" removed from shopping cart.";
             }
             return RedirectToAction(nameof(Index));
@@ -351,6 +371,7 @@ namespace OnlineBookStoreManagement.Controllers
 
                 _db.ShoppingCartItems.Remove(cartItem);
                 await _db.SaveChangesAsync();
+                TriggerBackgroundSync();
                 TempData["SuccessMessage"] = $"\"{bookTitle}\" moved to your wishlist!";
             }
 

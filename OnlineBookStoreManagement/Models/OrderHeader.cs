@@ -50,6 +50,12 @@ namespace OnlineBookStoreManagement.Models
         [StringLength(20)]
         public string PostalCode { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Unique client-generated transaction ID used to prevent duplicate order placements during offline sync.
+        /// </summary>
+        [StringLength(100)]
+        public string? ClientSyncId { get; set; }
+
         public ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
     }
 }

@@ -103,7 +103,7 @@
                 <div class="list-group list-group-flush mb-3">
                     @foreach (var item in Model.CartItems)
                     {
-                        <div class="list-group-item bg-transparent text-light border-secondary px-0 py-3 d-flex align-items-center justify-content-between">
+                        <div class="list-group-item bg-transparent text-light border-secondary px-0 py-3 d-flex align-items-center justify-content-between checkout-cart-item" data-book-id="@item.BookId" data-book-title="@item.Book?.Title" data-book-count="@item.Count" data-book-price="@item.Price">
                             <div class="d-flex align-items-center gap-3">
                                 <span class="badge bg-primary rounded-pill">@item.Count x</span>
                                 <div>

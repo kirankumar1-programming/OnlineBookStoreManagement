@@ -175,7 +175,7 @@
 
             @if (User.Identity?.IsAuthenticated == true)
             {
-                <form asp-action="AddReview" method="post">
+                <form id="addReviewForm" asp-action="AddReview" method="post">
                     <input type="hidden" name="bookId" value="@Model.Book.Id" />
 
                     <div class="mb-3">
