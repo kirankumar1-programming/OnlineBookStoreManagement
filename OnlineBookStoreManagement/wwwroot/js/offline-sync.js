@@ -235,24 +235,99 @@ const OfflineSyncManager = (function () {
         }
     }
 
-    // --- 5. Intercept Forms for Seamless Offline Operation ---
+    // --- 5. Intercept Forms & Links for Seamless Offline Operation ---
     function setupFormInterceptors() {
         document.addEventListener('submit', async function (e) {
             const form = e.target;
+            if (!form) return;
 
-            // A. Intercept Checkout Form if offline
-            if (form && form.id === 'checkoutForm') {
+            const action = (form.getAttribute('action') || form.action || '').toLowerCase();
+
+            // A. Intercept Add to Cart Form if offline
+            if (action.includes('/cart/addtocart')) {
                 if (!navigator.onLine) {
                     e.preventDefault();
-                    await handleOfflineCheckout(form);
+                    const formData = new FormData(form);
+                    const bookId = parseInt(formData.get('bookId') || '0', 10);
+                    const quantity = parseInt(formData.get('quantity') || '1', 10);
+
+                    if (bookId > 0) {
+                        await OfflineStore.addToOfflineCart(bookId, quantity);
+                        await updateNetworkUI();
+                        showToast('Added to Cart (Offline)', 'Book has been added to your local offline cart. It will sync automatically when back online.', 'success');
+                    }
+                    return;
                 }
             }
 
-            // B. Intercept Review Form if offline
-            if (form && (form.id === 'addReviewForm' || form.action.includes('/Home/AddReview'))) {
+            // B. Intercept Cart Quantity & Mutation Forms if offline
+            if (action.includes('/cart/updatequantity') || action.includes('/cart/plus') || action.includes('/cart/minus') || action.includes('/cart/remove')) {
+                if (!navigator.onLine) {
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    const bookId = parseInt(formData.get('bookId') || formData.get('cartId') || '0', 10);
+                    const quantity = parseInt(formData.get('quantity') || '1', 10);
+
+                    if (action.includes('/cart/remove')) {
+                        await OfflineStore.removeOfflineCartItem(bookId);
+                        showToast('Offline Cart Updated', 'Item removed from offline cart.', 'info');
+                    } else {
+                        await OfflineStore.updateOfflineCartQuantity(bookId, quantity);
+                        showToast('Offline Cart Updated', 'Cart quantity updated locally.', 'info');
+                    }
+                    await updateNetworkUI();
+                    return;
+                }
+            }
+
+            // C. Intercept Wishlist Toggle if offline
+            if (action.includes('/wishlist/toggle') || action.includes('/wishlist/remove')) {
+                if (!navigator.onLine) {
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    const bookId = parseInt(formData.get('bookId') || '0', 10);
+                    if (bookId > 0) {
+                        const added = await OfflineStore.toggleOfflineWishlist(bookId);
+                        showToast('Offline Wishlist', added ? 'Book added to offline wishlist.' : 'Book removed from offline wishlist.', 'info');
+                        const btn = form.querySelector('button');
+                        if (btn) {
+                            btn.classList.toggle('active');
+                            btn.classList.toggle('text-danger');
+                        }
+                    }
+                    return;
+                }
+            }
+
+            // D. Intercept Checkout Form if offline
+            if (form.id === 'checkoutForm' || action.includes('/cart/checkout')) {
+                if (!navigator.onLine) {
+                    e.preventDefault();
+                    await handleOfflineCheckout(form);
+                    return;
+                }
+            }
+
+            // E. Intercept Review Form if offline
+            if (form.id === 'addReviewForm' || action.includes('/home/addreview')) {
                 if (!navigator.onLine) {
                     e.preventDefault();
                     await handleOfflineReview(form);
+                    return;
+                }
+            }
+        });
+
+        // Intercept navigation links when offline to route to offline storefront
+        document.addEventListener('click', function (e) {
+            if (!navigator.onLine) {
+                const link = e.target.closest('a');
+                if (link && link.href && link.origin === window.location.origin) {
+                    const pathname = new URL(link.href).pathname.toLowerCase();
+                    if (pathname.startsWith('/cart') || pathname.startsWith('/wishlist') || pathname === '/' || pathname === '/home' || pathname === '/home/index') {
+                        e.preventDefault();
+                        window.location.href = '/offline.html';
+                    }
                 }
             }
         });

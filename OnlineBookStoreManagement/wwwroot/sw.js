@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bookstore-cache-v2';
+const CACHE_NAME = 'bookstore-cache-v3';
 const STATIC_ASSETS = [
     '/',
     '/offline.html',
@@ -55,8 +55,18 @@ self.addEventListener('fetch', (event) => {
     const request = event.request;
     const url = new URL(request.url);
 
-    // Skip non-GET requests (POST forms / mutations handled by client sync outbox)
+    // Handle non-GET requests (e.g. POST form submits when offline):
+    // Network first, fall back to /offline.html on network failure so browser NEVER shows the dinosaur page
     if (request.method !== 'GET') {
+        event.respondWith(
+            fetch(request).catch(async () => {
+                const offlineFallback = await caches.match('/offline.html');
+                if (offlineFallback) return offlineFallback;
+                return caches.match('/') || new Response('<html><body><h1>Offline Mode</h1><p>Operation saved locally.</p><a href="/offline.html">Open Offline Store</a></body></html>', {
+                    headers: { 'Content-Type': 'text/html' }
+                });
+            })
+        );
         return;
     }
 
