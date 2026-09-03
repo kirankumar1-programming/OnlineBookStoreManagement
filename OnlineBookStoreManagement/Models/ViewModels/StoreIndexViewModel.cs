@@ -36,6 +36,7 @@ namespace OnlineBookStoreManagement.Models.ViewModels
         public int TotalPages { get; set; }
         public int TotalItems { get; set; }
         public int PageSize { get; set; } = 6;
+        public HashSet<int> UserWishlistBookIds { get; set; } = new HashSet<int>();
 
         public string GetQueryString(
             int? page = null,
@@ -100,5 +101,6 @@ namespace OnlineBookStoreManagement.Models.ViewModels
         public int Quantity { get; set; } = 1;
         public BookReview NewReview { get; set; } = new BookReview();
         public bool UserHasReviewed { get; set; }
+        public bool IsInWishlist { get; set; }
     }
 }

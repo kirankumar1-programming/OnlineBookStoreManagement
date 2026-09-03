@@ -51,6 +51,12 @@ namespace OnlineBookStoreManagement.Controllers
                 return Ok(await HandleCartSummaryAsync(currentUserId));
             }
 
+            // 4. WISHLIST SUMMARY
+            if (IsMatch(input, "wishlist", "wish list", "saved books", "saved items", "favorites", "bookmarks"))
+            {
+                return Ok(await HandleWishlistSummaryAsync(currentUserId));
+            }
+
             // 4. CATEGORIES & GENRES
             var allCategories = await _db.Categories.ToListAsync();
             var specifiedCategory = allCategories.FirstOrDefault(c =>
@@ -144,6 +150,7 @@ namespace OnlineBookStoreManagement.Controllers
             {
                 new ChatOptionDto { Label = "⭐ Best Sellers", Value = "best sellers", Icon = "bi-star-fill" },
                 new ChatOptionDto { Label = "📖 Recommend Books", Value = "recommend books", Icon = "bi-book" },
+                new ChatOptionDto { Label = "❤️ My Wishlist", Value = "wishlist", Icon = "bi-heart" },
                 new ChatOptionDto { Label = "📦 Track My Order", Value = "track order", Icon = "bi-truck" },
                 new ChatOptionDto { Label = "📚 Browse Categories", Value = "categories", Icon = "bi-grid" },
                 new ChatOptionDto { Label = "🛒 View Cart", Value = "cart", Icon = "bi-cart3" },
@@ -294,6 +301,48 @@ namespace OnlineBookStoreManagement.Controllers
                 Reply = $"🛒 **Shopping Cart Summary** ({totalItems} item{(totalItems > 1 ? "s" : "")}):\n\n{itemsDescription}\n\n**Grand Total**: ₹{total:N2}",
                 ActionUrl = "/Cart",
                 ActionText = "Go to Checkout",
+                Options = GetDefaultOptions()
+            };
+        }
+
+        private async Task<ChatResponseDto> HandleWishlistSummaryAsync(string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new ChatResponseDto
+                {
+                    Reply = "❤️ Please **sign in** to view your wishlist items or save books for later.",
+                    ActionUrl = "/Account/Login?returnUrl=/Wishlist",
+                    ActionText = "Sign In",
+                    Options = GetDefaultOptions()
+                };
+            }
+
+            var wishlistItems = await _db.WishlistItems
+                .Include(w => w.Book)
+                .Where(w => w.UserId == userId)
+                .OrderByDescending(w => w.CreatedAt)
+                .ToListAsync();
+
+            if (!wishlistItems.Any())
+            {
+                return new ChatResponseDto
+                {
+                    Reply = "❤️ Your wishlist is currently empty! Click the heart icon on any book to save it for later.",
+                    ActionUrl = "/Home/Index",
+                    ActionText = "Explore Books",
+                    Options = GetDefaultOptions()
+                };
+            }
+
+            int inStockCount = wishlistItems.Count(w => w.Book != null && w.Book.StockQuantity > 0);
+            string itemsDescription = string.Join("\n", wishlistItems.Select(w => $"• **{w.Book?.Title}** by {w.Book?.Author} - ₹{(w.Book?.Price ?? 0):N2} ({(w.Book?.StockQuantity > 0 ? "In Stock" : "Out of Stock")})"));
+
+            return new ChatResponseDto
+            {
+                Reply = $"❤️ **My Wishlist** ({wishlistItems.Count} book{(wishlistItems.Count > 1 ? "s" : "")}, {inStockCount} in stock):\n\n{itemsDescription}\n\nYou can move your wishlist items directly to your shopping cart with one click!",
+                ActionUrl = "/Wishlist",
+                ActionText = "Manage Wishlist",
                 Options = GetDefaultOptions()
             };
         }

@@ -276,13 +276,23 @@
             <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-4">
                 @foreach (var book in Model.Books)
                 {
+                    bool inWishlist = Model.UserWishlistBookIds.Contains(book.Id);
                     <div class="col">
-                        <div class="book-card">
-                            <div class="book-cover-container">
+                        <div class="book-card position-relative">
+                            <div class="book-cover-container position-relative">
                                 <img src="@(string.IsNullOrEmpty(book.CoverImageUrl) ? "/images/default-book.svg" : book.CoverImageUrl)"
                                      alt="@book.Title" class="book-cover-img" width="300" height="400"
                                      onerror="this.onerror=null; this.src='/images/default-book.svg';" />
                                 <span class="category-tag">@book.Category?.Name</span>
+
+                                <form asp-controller="Wishlist" asp-action="Toggle" method="post" class="position-absolute top-0 end-0 m-2 wishlist-toggle-form" style="z-index: 10;">
+                                    <input type="hidden" name="bookId" value="@book.Id" />
+                                    <button type="submit" class="btn btn-dark btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center shadow-sm border border-secondary wishlist-btn @(inWishlist ? "active text-danger" : "text-light")" 
+                                            style="width: 34px; height: 34px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);" 
+                                            title="@(inWishlist ? "Remove from Wishlist" : "Add to Wishlist")" aria-label="Toggle Wishlist">
+                                        <i class="bi @(inWishlist ? "bi-heart-fill" : "bi-heart") fs-6"></i>
+                                    </button>
+                                </form>
                             </div>
                             <div class="book-card-body">
                                 <div class="d-flex align-items-center justify-content-between mb-1">
@@ -348,3 +358,52 @@
         }
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        $(document).on('submit', '.wishlist-toggle-form', function(e) {
+            e.preventDefault();
+            var $form = $(this);
+            var $btn = $form.find('.wishlist-btn');
+            var $icon = $btn.find('i');
+            
+            $.ajax({
+                url: $form.attr('action'),
+                type: 'POST',
+                data: $form.serialize(),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    if (response.requireLogin) {
+                        window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+                    if (response.success) {
+                        if (response.inWishlist) {
+                            $btn.addClass('active text-danger').removeClass('text-light');
+                            $icon.removeClass('bi-heart').addClass('bi-heart-fill');
+                            $btn.attr('title', 'Remove from Wishlist');
+                        } else {
+                            $btn.removeClass('active text-danger').addClass('text-light');
+                            $icon.removeClass('bi-heart-fill').addClass('bi-heart');
+                            $btn.attr('title', 'Add to Wishlist');
+                        }
+                        
+                        // Update navbar wishlist badge if present
+                        var $badge = $('a[asp-controller="Wishlist"] .badge, a[href*="Wishlist"] .badge');
+                        if (response.wishlistCount > 0) {
+                            if ($badge.length) {
+                                $badge.text(response.wishlistCount);
+                            }
+                        } else {
+                            $badge.remove();
+                        }
+                    }
+                },
+                error: function() {
+                    // Fallback submit form normally on error
+                    $form.off('submit').submit();
+                }
+            });
+        });
+    </script>
+}

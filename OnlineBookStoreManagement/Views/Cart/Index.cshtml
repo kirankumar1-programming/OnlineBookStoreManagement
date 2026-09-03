@@ -31,9 +31,12 @@
         <i class="bi bi-cart-x display-1 text-muted mb-3"></i>
         <h3 class="text-white">Your Shopping Cart is Empty</h3>
         <p class="text-muted">Looks like you haven't added any books to your cart yet.</p>
-        <div class="mt-3">
+        <div class="mt-3 d-flex flex-wrap justify-content-center gap-2">
             <a asp-controller="Home" asp-action="Index" class="btn btn-primary-gradient px-4 py-2">
                 Explore Bookstore Catalog
+            </a>
+            <a asp-controller="Wishlist" asp-action="Index" class="btn btn-secondary-outline px-4 py-2">
+                <i class="bi bi-heart me-1 text-danger"></i> View Wishlist
             </a>
         </div>
     </div>
@@ -52,7 +55,7 @@ else
                                 <th class="text-center">Price</th>
                                 <th class="text-center">Quantity</th>
                                 <th class="text-end">Total</th>
-                                <th></th>
+                                <th class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -102,12 +105,20 @@ else
                                     </td>
                                     <td class="text-end fw-bold text-accent align-middle">₹@item.Price.ToString("N2")</td>
                                     <td class="text-end align-middle">
-                                        <form asp-action="Remove" method="post">
-                                            <input type="hidden" name="cartId" value="@item.Id" />
-                                            <button type="submit" class="btn btn-sm text-danger hover-white border-0 bg-transparent" title="Remove Item">
-                                                <i class="bi bi-trash fs-5"></i>
-                                            </button>
-                                        </form>
+                                        <div class="d-inline-flex align-items-center gap-1">
+                                            <form asp-action="MoveToWishlist" method="post" class="d-inline">
+                                                <input type="hidden" name="cartId" value="@item.Id" />
+                                                <button type="submit" class="btn btn-sm text-info hover-white border-0 bg-transparent p-1" title="Save for Later (Move to Wishlist)">
+                                                    <i class="bi bi-bookmark-heart fs-5"></i>
+                                                </button>
+                                            </form>
+                                            <form asp-action="Remove" method="post" class="d-inline">
+                                                <input type="hidden" name="cartId" value="@item.Id" />
+                                                <button type="submit" class="btn btn-sm text-danger hover-white border-0 bg-transparent p-1" title="Remove Item">
+                                                    <i class="bi bi-trash fs-5"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             }

@@ -73,27 +73,38 @@
                 </div>
             </div>
 
-            <!-- Add to Cart Form -->
+            <!-- Add to Cart & Wishlist Actions -->
             <div class="mt-auto pt-3 border-top border-secondary">
-                @if (Model.Book.StockQuantity > 0)
-                {
-                    <form asp-controller="Cart" asp-action="AddToCart" method="post" class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-3">
+                <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-3">
+                    @if (Model.Book.StockQuantity > 0)
+                    {
+                        <form asp-controller="Cart" asp-action="AddToCart" method="post" class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-3 flex-grow-1">
+                            <input type="hidden" name="bookId" value="@Model.Book.Id" />
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="form-label text-muted fw-bold mb-0">Quantity:</label>
+                                <input type="number" name="quantity" value="1" min="1" max="@Model.Book.StockQuantity" class="form-control form-control-custom text-center fw-bold" style="width: 80px;" />
+                            </div>
+                            <button type="submit" class="btn btn-primary-gradient py-2 px-4 flex-grow-1 fw-bold">
+                                <i class="bi bi-cart-plus-fill me-2"></i> Add to Cart
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <button class="btn btn-secondary disabled opacity-50 px-4 py-2 flex-grow-1">
+                            <i class="bi bi-slash-circle me-2"></i> Currently Unavailable
+                        </button>
+                    }
+
+                    <form asp-controller="Wishlist" asp-action="Toggle" method="post" class="wishlist-toggle-form">
                         <input type="hidden" name="bookId" value="@Model.Book.Id" />
-                        <div class="d-flex align-items-center gap-2">
-                            <label class="form-label text-muted fw-bold mb-0">Quantity:</label>
-                            <input type="number" name="quantity" value="1" min="1" max="@Model.Book.StockQuantity" class="form-control form-control-custom text-center fw-bold" style="width: 80px;" />
-                        </div>
-                        <button type="submit" class="btn btn-primary-gradient py-2 px-4 w-100 w-sm-auto fw-bold">
-                            <i class="bi bi-cart-plus-fill me-2"></i> Add to Cart
+                        <button type="submit" class="btn btn-secondary-outline py-2 px-3 w-100 wishlist-details-btn @(Model.IsInWishlist ? "text-danger border-danger" : "")" 
+                                title="@(Model.IsInWishlist ? "Remove from Wishlist" : "Save to Wishlist")">
+                            <i class="bi @(Model.IsInWishlist ? "bi-heart-fill text-danger" : "bi-heart") me-2"></i>
+                            <span class="wishlist-btn-text">@(Model.IsInWishlist ? "In Wishlist" : "Wishlist")</span>
                         </button>
                     </form>
-                }
-                else
-                {
-                    <button class="btn btn-secondary disabled opacity-50 px-4 py-2 w-100 w-sm-auto">
-                        <i class="bi bi-slash-circle me-2"></i> Currently Unavailable
-                    </button>
-                }
+                </div>
             </div>
         </div>
     </div>
@@ -228,4 +239,55 @@
             }
         </div>
     </div>
+}
+
+@section Scripts {
+    <script>
+        $(document).on('submit', '.wishlist-toggle-form', function(e) {
+            e.preventDefault();
+            var $form = $(this);
+            var $btn = $form.find('.wishlist-details-btn');
+            var $icon = $btn.find('i');
+            var $text = $btn.find('.wishlist-btn-text');
+            
+            $.ajax({
+                url: $form.attr('action'),
+                type: 'POST',
+                data: $form.serialize(),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    if (response.requireLogin) {
+                        window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+                    if (response.success) {
+                        if (response.inWishlist) {
+                            $btn.addClass('text-danger border-danger');
+                            $icon.removeClass('bi-heart').addClass('bi-heart-fill text-danger');
+                            $text.text('In Wishlist');
+                            $btn.attr('title', 'Remove from Wishlist');
+                        } else {
+                            $btn.removeClass('text-danger border-danger');
+                            $icon.removeClass('bi-heart-fill text-danger').addClass('bi-heart');
+                            $text.text('Wishlist');
+                            $btn.attr('title', 'Save to Wishlist');
+                        }
+                        
+                        // Update navbar wishlist badge
+                        var $badge = $('a[asp-controller="Wishlist"] .badge, a[href*="Wishlist"] .badge');
+                        if (response.wishlistCount > 0) {
+                            if ($badge.length) {
+                                $badge.text(response.wishlistCount);
+                            }
+                        } else {
+                            $badge.remove();
+                        }
+                    }
+                },
+                error: function() {
+                    $form.off('submit').submit();
+                }
+            });
+        });
+    </script>
 }

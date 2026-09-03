@@ -72,6 +72,22 @@ namespace OnlineBookStoreManagement.Data
             }
             catch { /* Column already exists */ }
 
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS ""WishlistItems"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_WishlistItems"" PRIMARY KEY AUTOINCREMENT,
+                        ""UserId"" TEXT NOT NULL,
+                        ""BookId"" INTEGER NOT NULL,
+                        ""CreatedAt"" TEXT NOT NULL,
+                        CONSTRAINT ""FK_WishlistItems_AspNetUsers_UserId"" FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers"" (""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_WishlistItems_Books_BookId"" FOREIGN KEY (""BookId"") REFERENCES ""Books"" (""Id"") ON DELETE CASCADE
+                    );");
+                await context.Database.ExecuteSqlRawAsync(@"
+                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_WishlistItems_UserId_BookId"" ON ""WishlistItems"" (""UserId"", ""BookId"");");
+            }
+            catch { /* Table/index already exists */ }
+
             // 1. Seed Roles
             if (!await roleManager.RoleExistsAsync(Role_Admin))
             {

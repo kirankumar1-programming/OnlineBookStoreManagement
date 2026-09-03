@@ -143,6 +143,17 @@ namespace OnlineBookStoreManagement.Controllers
                 .OrderBy(a => a)
                 .ToListAsync();
 
+            var currentUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userWishlistBookIds = new HashSet<int>();
+            if (!string.IsNullOrEmpty(currentUserId))
+            {
+                var bookIds = await _db.WishlistItems
+                    .Where(w => w.UserId == currentUserId)
+                    .Select(w => w.BookId)
+                    .ToListAsync();
+                userWishlistBookIds = new HashSet<int>(bookIds);
+            }
+
             var viewModel = new StoreIndexViewModel
             {
                 Books = books,
@@ -158,7 +169,8 @@ namespace OnlineBookStoreManagement.Controllers
                 CurrentPage = page,
                 TotalPages = totalPages,
                 TotalItems = totalItems,
-                PageSize = pageSize
+                PageSize = pageSize,
+                UserWishlistBookIds = userWishlistBookIds
             };
 
             return View(viewModel);
@@ -227,15 +239,17 @@ namespace OnlineBookStoreManagement.Controllers
                 .Take(3)
                 .ToListAsync();
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
             bool userHasReviewed = !string.IsNullOrEmpty(userId) && book.Reviews.Any(r => r.UserId == userId);
+            bool isInWishlist = !string.IsNullOrEmpty(userId) && await _db.WishlistItems.AnyAsync(w => w.UserId == userId && w.BookId == book.Id);
 
             var viewModel = new BookDetailsViewModel
             {
                 Book = book,
                 RelatedBooks = relatedBooks,
                 Quantity = 1,
-                UserHasReviewed = userHasReviewed
+                UserHasReviewed = userHasReviewed,
+                IsInWishlist = isInWishlist
             };
 
             return View(viewModel);
@@ -247,7 +261,7 @@ namespace OnlineBookStoreManagement.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddReview(int bookId, int rating, string? comment)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
             {
                 TempData["ErrorMessage"] = "Please sign in to leave a review.";

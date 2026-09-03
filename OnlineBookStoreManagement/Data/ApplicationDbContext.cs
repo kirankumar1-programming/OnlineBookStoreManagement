@@ -15,6 +15,7 @@ namespace OnlineBookStoreManagement.Data
         public DbSet<Category> Categories { get; set; }
 
         public DbSet<ShoppingCartItem> ShoppingCartItems { get; set; } = null!;
+        public DbSet<WishlistItem> WishlistItems { get; set; } = null!;
         public DbSet<OrderHeader> OrderHeaders { get; set; } = null!;
         public DbSet<OrderDetail> OrderDetails { get; set; } = null!;
         public DbSet<BookReview> BookReviews { get; set; } = null!;
@@ -29,6 +30,22 @@ namespace OnlineBookStoreManagement.Data
                 .HasOne(b => b.Category)
                 .WithMany(c => c.Books)
                 .HasForeignKey(b => b.CategoryId);
+
+            builder.Entity<WishlistItem>()
+                .HasOne(w => w.User)
+                .WithMany()
+                .HasForeignKey(w => w.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<WishlistItem>()
+                .HasOne(w => w.Book)
+                .WithMany()
+                .HasForeignKey(w => w.BookId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<WishlistItem>()
+                .HasIndex(w => new { w.UserId, w.BookId })
+                .IsUnique();
         }
     }
 

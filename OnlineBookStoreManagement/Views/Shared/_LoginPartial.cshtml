@@ -6,6 +6,7 @@
 
 @{
     int cartCount = 0;
+    int wishlistCount = 0;
     int lowStockAlertCount = 0;
     ApplicationUser? user = null;
     bool isAdmin = false;
@@ -17,6 +18,7 @@
         {
             var userId = user.Id;
             cartCount = DbContext.ShoppingCartItems.Where(i => i.UserId == userId).Sum(i => i.Count);
+            wishlistCount = DbContext.WishlistItems.Count(w => w.UserId == userId);
             
             // Comprehensive Admin check
             isAdmin = User.IsInRole("Admin")
@@ -75,6 +77,17 @@
         }
 
         <li class="nav-item">
+            <a class="nav-link nav-link-custom position-relative d-flex align-items-center gap-1 @(ViewContext.RouteData.Values["controller"]?.ToString() == "Wishlist" ? "active" : "")" asp-controller="Wishlist" asp-action="Index" title="My Wishlist">
+                <i class="bi bi-heart fs-5 text-danger"></i>
+                <span class="d-none d-md-inline">Wishlist</span>
+                @if (wishlistCount > 0)
+                {
+                    <span class="badge badge-custom bg-danger">@wishlistCount</span>
+                }
+            </a>
+        </li>
+
+        <li class="nav-item">
             <a class="nav-link nav-link-custom position-relative d-flex align-items-center gap-1 @(ViewContext.RouteData.Values["controller"]?.ToString() == "Cart" ? "active" : "")" asp-controller="Cart" asp-action="Index">
                 <i class="bi bi-cart3 fs-5"></i>
                 <span class="d-none d-md-inline">Cart</span>
@@ -86,11 +99,11 @@
         </li>
 
         <li class="nav-item dropdown">
-            <a class="nav-link nav-link-custom dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: 700; font-size: 0.85rem;">
+            <a class="nav-link nav-link-custom dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px; font-weight: 700; font-size: 0.85rem;">
                     @(!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0, 1).ToUpper() : "A")
                 </div>
-                <span>@(!string.IsNullOrEmpty(user.FullName) ? user.FullName : user.UserName)</span>
+                <span class="navbar-user-name">@(!string.IsNullOrEmpty(user.FullName) ? user.FullName : user.UserName)</span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-secondary shadow-lg" aria-labelledby="userDropdown">
                 @if (isAdmin)
@@ -144,6 +157,15 @@
                     </li>
                     <li><hr class="dropdown-divider border-secondary"></li>
                 }
+                <li>
+                    <a class="dropdown-item py-2 d-flex justify-content-between align-items-center" asp-controller="Wishlist" asp-action="Index">
+                        <span><i class="bi bi-heart me-2 text-danger"></i> My Wishlist</span>
+                        @if (wishlistCount > 0)
+                        {
+                            <span class="badge bg-danger rounded-pill">@wishlistCount</span>
+                        }
+                    </a>
+                </li>
                 <li>
                     <a class="dropdown-item py-2" asp-controller="Account" asp-action="Orders">
                         <i class="bi bi-bag-check me-2"></i> My Orders

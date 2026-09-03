@@ -311,13 +311,49 @@ namespace OnlineBookStoreManagement.Controllers
         public async Task<IActionResult> Remove(int cartId)
         {
             var userId = GetUserId();
-            var cartItem = await _db.ShoppingCartItems.FirstOrDefaultAsync(c => c.Id == cartId && c.UserId == userId);
+            var cartItem = await _db.ShoppingCartItems.Include(c => c.Book).FirstOrDefaultAsync(c => c.Id == cartId && c.UserId == userId);
             if (cartItem != null)
             {
+                var title = cartItem.Book?.Title ?? "Item";
                 _db.ShoppingCartItems.Remove(cartItem);
                 await _db.SaveChangesAsync();
-                TempData["SuccessMessage"] = "Item removed from shopping cart.";
+                TempData["SuccessMessage"] = $"\"{title}\" removed from shopping cart.";
             }
+            return RedirectToAction(nameof(Index));
+        }
+
+        // POST: /Cart/MoveToWishlist
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MoveToWishlist(int cartId)
+        {
+            var userId = GetUserId();
+            if (string.IsNullOrEmpty(userId))
+            {
+                return RedirectToAction("Login", "Account", new { returnUrl = "/Cart" });
+            }
+
+            var cartItem = await _db.ShoppingCartItems.Include(c => c.Book).FirstOrDefaultAsync(c => c.Id == cartId && c.UserId == userId);
+            if (cartItem != null)
+            {
+                var bookTitle = cartItem.Book?.Title ?? "Book";
+                var alreadyInWishlist = await _db.WishlistItems.AnyAsync(w => w.UserId == userId && w.BookId == cartItem.BookId);
+                if (!alreadyInWishlist)
+                {
+                    var wishlistItem = new WishlistItem
+                    {
+                        UserId = userId,
+                        BookId = cartItem.BookId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _db.WishlistItems.AddAsync(wishlistItem);
+                }
+
+                _db.ShoppingCartItems.Remove(cartItem);
+                await _db.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"\"{bookTitle}\" moved to your wishlist!";
+            }
+
             return RedirectToAction(nameof(Index));
         }
 
