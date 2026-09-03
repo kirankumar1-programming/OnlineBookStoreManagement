@@ -276,6 +276,22 @@ namespace OnlineBookStoreManagement.Services
                     .ToDictionary(g => g.Key, g => g.First());
                 var localBooksDict = await localDb.Books.ToDictionaryAsync(b => b.Id);
 
+                Book? ResolveServerBook(int localBookId)
+                {
+                    if (localBooksDict.TryGetValue(localBookId, out var lBook))
+                    {
+                        if (!string.IsNullOrWhiteSpace(lBook.ISBN) && serverBooksDict.TryGetValue(lBook.ISBN, out var sBookByIsbn))
+                        {
+                            return sBookByIsbn;
+                        }
+                        if (!string.IsNullOrWhiteSpace(lBook.Title))
+                        {
+                            return serverBooksList.FirstOrDefault(b => b.Title.Equals(lBook.Title, StringComparison.OrdinalIgnoreCase));
+                        }
+                    }
+                    return null;
+                }
+
                 // 5. PUSH / SYNC: Shopping Cart Items (Local -> Server)
                 try
                 {
@@ -296,9 +312,8 @@ namespace OnlineBookStoreManagement.Services
 
                             foreach (var lItem in lItems)
                             {
-                                string isbn = lItem.Book?.ISBN ?? (localBooksDict.TryGetValue(lItem.BookId, out var lb) ? lb.ISBN : "");
-                                if (string.IsNullOrWhiteSpace(isbn)) continue;
-                                if (!serverBooksDict.TryGetValue(isbn, out var sBook)) continue;
+                                var sBook = ResolveServerBook(lItem.BookId);
+                                if (sBook == null) continue;
 
                                 activeServerBookIds.Add(sBook.Id);
 
@@ -360,9 +375,8 @@ namespace OnlineBookStoreManagement.Services
 
                             foreach (var lItem in lItems)
                             {
-                                string isbn = lItem.Book?.ISBN ?? (localBooksDict.TryGetValue(lItem.BookId, out var lb) ? lb.ISBN : "");
-                                if (string.IsNullOrWhiteSpace(isbn)) continue;
-                                if (!serverBooksDict.TryGetValue(isbn, out var sBook)) continue;
+                                var sBook = ResolveServerBook(lItem.BookId);
+                                if (sBook == null) continue;
 
                                 activeServerBookIds.Add(sBook.Id);
 
@@ -451,8 +465,8 @@ namespace OnlineBookStoreManagement.Services
                             foreach (var detail in localOrder.OrderDetails)
                             {
                                 int serverBookId = detail.BookId;
-                                if (localBooksDict.TryGetValue(detail.BookId, out var lBook) &&
-                                    serverBooksDict.TryGetValue(lBook.ISBN, out var sBook))
+                                var sBook = ResolveServerBook(detail.BookId);
+                                if (sBook != null)
                                 {
                                     serverBookId = sBook.Id;
                                     sBook.StockQuantity -= detail.Count;
@@ -486,8 +500,8 @@ namespace OnlineBookStoreManagement.Services
 
                     foreach (var lRev in localReviews)
                     {
-                        if (lRev.Book == null || string.IsNullOrWhiteSpace(lRev.Book.ISBN)) continue;
-                        if (!serverBooksDict.TryGetValue(lRev.Book.ISBN, out var sBook)) continue;
+                        var sBook = ResolveServerBook(lRev.BookId);
+                        if (sBook == null) continue;
 
                         string targetUserId = userMapping.TryGetValue(lRev.UserId, out var mappedId) ? mappedId : lRev.UserId;
 

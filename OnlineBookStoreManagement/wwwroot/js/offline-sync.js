@@ -170,61 +170,67 @@ const OfflineSyncManager = (function () {
 
         try {
             const pendingQueue = await OfflineStore.getPendingSyncQueue();
-            if (pendingQueue.length === 0) {
-                isSyncing = false;
-                await updateNetworkUI();
-                return;
-            }
+            const offlineCart = await OfflineStore.getOfflineCart();
+            const offlineWishlist = await OfflineStore.getOfflineWishlist();
 
-            // Extract orders and reviews from queue
-            const orders = pendingQueue.filter(q => q.type === 'Order').map(q => q.payload);
-            const reviews = pendingQueue.filter(q => q.type === 'Review').map(q => q.payload);
+            const orders = (pendingQueue || []).filter(q => q.type === 'Order').map(q => q.payload);
+            const reviews = (pendingQueue || []).filter(q => q.type === 'Review').map(q => q.payload);
 
-            const payload = {
-                batchId: 'BATCH-' + Date.now(),
-                orders: orders,
-                reviews: reviews
-            };
+            const hasDataToSync = orders.length > 0 || reviews.length > 0 || offlineCart.length > 0 || offlineWishlist.length > 0;
 
-            const response = await fetch('/api/sync/process', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+            if (hasDataToSync) {
+                const payload = {
+                    batchId: 'BATCH-' + Date.now(),
+                    orders: orders,
+                    reviews: reviews,
+                    cartItems: offlineCart.map(c => ({ bookId: c.bookId, count: c.count })),
+                    wishlistItems: offlineWishlist.map(w => ({ bookId: w.bookId }))
+                };
 
-            if (!response.ok) {
-                throw new Error(`Server returned HTTP ${response.status}`);
-            }
+                const response = await fetch('/api/sync/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
 
-            const result = await response.json();
-            if (result && result.success) {
-                // Update local orders with server IDs
-                if (result.results && Array.isArray(result.results)) {
-                    for (const item of result.results) {
-                        if (item.type === 'Order') {
-                            await OfflineStore.updateOfflineOrderStatus(item.clientSyncId, item.status === 'Success' || item.status === 'Skipped' ? 'Synced' : item.status, item.serverId, item.message);
-                        }
-                    }
+                if (!response.ok) {
+                    throw new Error(`Server returned HTTP ${response.status}`);
                 }
 
-                // Clear synced queue items
-                await OfflineStore.clearAllPendingQueue();
+                const result = await response.json();
+                if (result && result.success) {
+                    // Update local orders with server IDs
+                    if (result.results && Array.isArray(result.results)) {
+                        for (const item of result.results) {
+                            if (item.type === 'Order') {
+                                await OfflineStore.updateOfflineOrderStatus(item.clientSyncId, item.status === 'Success' || item.status === 'Skipped' ? 'Synced' : item.status, item.serverId, item.message);
+                            }
+                        }
+                    }
 
-                showToast(
-                    'Sync Completed',
-                    `Successfully synchronized ${result.syncedOrdersCount || 0} order(s) and ${result.syncedReviewsCount || 0} review(s) with the database!`,
-                    'success'
-                );
+                    // Clear synced queue items & offline cart
+                    await OfflineStore.clearAllPendingQueue();
+                    await OfflineStore.clearOfflineCart();
 
-                // Re-fresh catalog to get updated stock
-                await refreshCatalogCache();
+                    showToast(
+                        'Sync Completed',
+                        `Successfully synchronized offline data with the central database!`,
+                        'success'
+                    );
 
-                // Dispatch global event
-                window.dispatchEvent(new CustomEvent('bookstore:synced', { detail: result }));
+                    // Re-fresh catalog to get updated stock
+                    await refreshCatalogCache();
+
+                    // Dispatch global event
+                    window.dispatchEvent(new CustomEvent('bookstore:synced', { detail: result }));
+                } else {
+                    showToast('Sync Warning', result.summaryMessage || 'Some items could not be synchronized.', 'warning');
+                }
             } else {
-                showToast('Sync Warning', result.summaryMessage || 'Some items could not be synchronized.', 'warning');
+                // Background check to align databases
+                await fetch('/api/sync/trigger-server-sync', { method: 'POST' }).catch(() => {});
             }
         } catch (err) {
             console.error('[OfflineSync] Batch synchronization error:', err);

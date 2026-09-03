@@ -76,6 +76,20 @@ namespace OnlineBookStoreManagement.Controllers
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 var result = await _syncService.ProcessBatchSyncAsync(request, userId);
+
+                // Trigger server database sync to push all batch items to Azure SQL Server immediately
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _serverDbSyncService.SyncWithServerDatabaseAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Background server database sync failed after batch processing.");
+                    }
+                });
+
                 return Ok(result);
             }
             catch (Exception ex)
