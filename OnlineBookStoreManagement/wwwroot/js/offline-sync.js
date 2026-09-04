@@ -159,8 +159,9 @@ const OfflineSyncManager = (function () {
     }
 
     // --- 4. Outbox Sync Processor ---
-    async function processPendingSync() {
-        if (isSyncing || !navigator.onLine) return;
+    async function processPendingSync(force = false) {
+        if (isSyncing) return;
+        if (!force && !navigator.onLine) return;
         isSyncing = true;
 
         const syncBadge = document.getElementById('offlineStatusBadge');
